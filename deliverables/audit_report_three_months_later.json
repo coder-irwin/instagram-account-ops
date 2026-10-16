@@ -1,7 +1,7 @@
 {
-  "audit_id": "audit-20270120T104914",
+  "audit_id": "audit-20270120T123350",
   "resolved_followups": [],
-  "ran_at": "2027-01-20T10:49:14+00:00",
+  "ran_at": "2027-01-20T12:33:50+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [
@@ -17,7 +17,7 @@
       "brand": "northwind-test",
       "check": "verification_stale",
       "severity": "low",
-      "detail": "last verified 2026-10-17T10:49:14+00:00",
+      "detail": "last verified 2026-10-17T12:33:50+00:00",
       "verification": "integration-verified (simulated)",
       "task": 9
     },

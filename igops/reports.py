@@ -93,11 +93,11 @@ def run_log(app: App) -> Path:
 def secret_scan(app: App) -> dict:
     """Decrypt every secret in the vault and search every output file for it."""
     values = []
-    for r in app.vault.refs():
-        values.append(app.vault._data[r]["value"])
-        if "@" in app.vault._data[r]["value"] and "://" in app.vault._data[r]["value"]:
-            # also catch the password part of proxy URLs on its own
-            values.append(app.vault._data[r]["value"].split("://", 1)[1].split("@", 1)[0].split(":", 1)[-1])
+    for value in app.vault.scan_values():
+        values.append(value)
+        if "@" in value and "://" in value:
+            # also catch the password part of proxy and SMTP URLs on its own
+            values.append(value.split("://", 1)[1].split("@", 1)[0].split(":", 1)[-1])
     files = [p for p in app.state_dir.rglob("*") if p.is_file() and p.suffix in (".md", ".json", ".jsonl", ".log", ".txt")]
     hits = [(str(p.relative_to(app.state_dir)), i) for p in files for i, v in enumerate(values)
             if len(v) >= 6 and v in p.read_text(errors="ignore")]

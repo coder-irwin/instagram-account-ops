@@ -4,12 +4,24 @@ A prototype that provisions, secures, audits and offboards **one company-authori
 
 **Read [DECISION_LOG.md](DECISION_LOG.md) first.** The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
 
+## Going live in about ten minutes
+
+Every missing piece of GAJAN's test environment currently runs on a clearly labelled stand-in. Once the access arrives, three commands switch to the real thing:
+
+```bash
+uv run python -m igops setup      # real values; secrets typed hidden, straight into the vault
+uv run python -m igops doctor     # lists anything still missing, each with its fix
+uv run python -m igops provision  # the live run: stops at each human step, resumes after
+```
+
+`setup` supports a local encrypted vault, HashiCorp Vault and 1Password. A test rehearses this path end to end against fake versions of GAJAN's services, using the real Meta client and real proxy checks.
+
 ## What is real and what is simulated
 
 | Part | Status |
 |---|---|
 | Workflow engine, task tracking, reminders, escalation, crash recovery | Real, runs as is |
-| Vault: encrypted, versioned, values never printed | Real local vault; an adapter slot for GAJAN's vault |
+| Vault: encrypted, versioned, values never printed | Real local vault, plus HashiCorp Vault and 1Password adapters tested against fakes |
 | Account register, audit, offboarding, reports, secret scan | Real |
 | Proxy health checks, timeouts, retries, pinned sessions, rotation, failover, challenge pause | Real, run against a local neutral endpoint and two local test proxies |
 | Meta Graph API verification of the Instagram profile | Real client written. **Simulated in the demo**, because no Meta token for GAJAN's test business has been provided yet. Everything simulated is labelled "simulated" in every report. |
@@ -21,7 +33,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --extra dev
-uv run pytest -q                     # 17 behaviour tests
+uv run pytest -q                     # 20 behaviour tests
 uv run python -m igops demo          # full simulated walkthrough, about 5 seconds
 ```
 
@@ -96,13 +108,14 @@ Set `mode = "live"` in `config/brand.toml` to use the real Meta API client inste
 - **Email-alias and phone reservation are human requests.** No mail or telephony integration was specified.
 - **Notifications go to the run log,** and to email once SMTP credentials are in the vault. There is no Slack integration.
 - **Part D, the device fleet, was not built.** It is optional, and the brief rewards one complete path over breadth.
-- **The local vault is suitable for one operator.** A team should use the provided vault through the adapter slot in `igops/vault.py`.
+- **The HashiCorp and 1Password adapters are tested against fakes only.** Check them once against the real vault.
 
 ## Layout
 
 ```
 igops/core.py        clock, redaction, redacted run log
-igops/vault.py       encrypted versioned vault and the adapter interface
+igops/vault.py       local encrypted vault, HashiCorp and 1Password adapters
+igops/golive.py      `setup` wizard and `doctor` readiness check
 igops/store.py       SQLite: register, people, roles, tasks, steps, findings, lease
 igops/tasks.py       human tasks: idempotent creation, reminders, escalation, notifier
 igops/workflow.py    resumable step runner with bounded retries

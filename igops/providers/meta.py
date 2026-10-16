@@ -60,6 +60,10 @@ class MetaGraph:
         r.raise_for_status()
         return r.json()
 
+    def me(self) -> dict:
+        """Cheap token check: who is this token for?"""
+        return self._get("me", fields="id,name")
+
     def instagram_profile(self, ig_user_id: str) -> dict:
         if not ig_user_id:
             raise IntegrationUnavailable("Instagram business account id not known yet")

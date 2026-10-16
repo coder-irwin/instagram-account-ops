@@ -12,6 +12,12 @@ category = "Shopping & retail"               # CHANGE
 bio = "Test brand account operated by GAJAN Group for an internal operations prototype."
 profile_image = "assets/brand_logo.png"      # CHANGE: from the brand kit
 
+[vault]
+backend = "local"              # CHANGE: "local", "hashicorp" or "1password"
+# address = "https://vault.example:8200"   # hashicorp: token from the VAULT_TOKEN env var
+# mount = "secret"
+# op_vault = "GAJAN Test"                  # 1password: token from OP_SERVICE_ACCOUNT_TOKEN
+
 [ops]
 owner = "ops.owner@test-brand.example"           # CHANGE: owner of human tasks
 escalate_to = "ops.lead@test-brand.example"      # CHANGE: escalation contact

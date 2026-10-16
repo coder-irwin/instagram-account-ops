@@ -1,10 +1,10 @@
 {
-  "audit_id": "audit-20261017T104914",
+  "audit_id": "audit-20261017T123350",
   "resolved_followups": [
     19,
     20
   ],
-  "ran_at": "2026-10-17T10:49:14+00:00",
+  "ran_at": "2026-10-17T12:33:50+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [],

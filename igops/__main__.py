@@ -13,6 +13,8 @@
   uv run python -m igops offboard EMAIL            offboard a departing person
   uv run python -m igops proxy-check               health-check the configured proxies
   uv run python -m igops report                    write register, tasks, run log, secret scan
+  uv run python -m igops setup                     enter the real values; secrets go to the vault
+  uv run python -m igops doctor                    what still stands between this and a live run
 """
 from __future__ import annotations
 
@@ -46,6 +48,8 @@ def main(argv=None) -> int:
     o = sub.add_parser("offboard"); o.add_argument("email")
     sub.add_parser("proxy-check")
     sub.add_parser("report")
+    sub.add_parser("setup")
+    sub.add_parser("doctor")
     args = ap.parse_args(argv)
 
     if args.cmd == "demo":
@@ -53,7 +57,21 @@ def main(argv=None) -> int:
         res = demo.run(args.config, str(Path(args.state) / "demo"))
         return 0 if not res["scan"]["leaks"] else 1
 
+    if args.cmd == "setup":
+        from .golive import setup
+        setup(args.config, args.state)
+        return 0
+
     app = build(args.config, args.state)
+
+    if args.cmd == "doctor":
+        from .golive import doctor
+        rows = doctor(app)
+        for r in rows:
+            print(f"{'OK  ' if r['ok'] else 'TODO'}  {r['check']:<34} {r['detail']}" + (f"\n      fix: {r['fix']}" if r['fix'] else ""))
+        todo = sum(not r["ok"] for r in rows)
+        print(f"\n{'Ready to go live.' if not todo else f'{todo} item(s) left before going live.'}")
+        return 0 if not todo else 1
 
     if args.cmd == "status":
         acc = app.store.account(app.cfg.brand_key)

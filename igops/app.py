@@ -9,14 +9,14 @@ from .core import RunLog
 from .providers.meta import MetaGraph, SimulatedMeta
 from .store import Store
 from .tasks import Notifier, Tasks
-from .vault import LocalVault
+from .vault import open_vault
 
 
 @dataclass
 class App:
     cfg: Config
     store: Store
-    vault: LocalVault
+    vault: object
     log: RunLog
     tasks: Tasks
     meta: object
@@ -30,7 +30,7 @@ def build(config_path: str | Path = "config/brand.toml", state_dir: str | Path =
     state.mkdir(parents=True, exist_ok=True)
     log = RunLog(state / "run_log.jsonl", echo=echo)
     store = Store(state / "igops.db")
-    vault = LocalVault(state / "vault.enc")
+    vault = open_vault(cfg.vault, state)
     tasks = Tasks(store, log, Notifier(log, vault, f"vault://{cfg.brand_key}/notify/smtp"))
     if meta is None:
         meta = SimulatedMeta() if cfg.simulation else MetaGraph(vault, cfg.meta_token_ref, log)

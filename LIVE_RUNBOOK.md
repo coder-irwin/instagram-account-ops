@@ -16,16 +16,15 @@ This takes the prototype from simulation to the real throwaway brand on real Ins
 
 Until each one arrives, the matching step shows as **blocked** on the register, with the command that resumes it.
 
-## 1. Configure (operator)
+## 1. Configure (operator, about 10 minutes)
 
 ```bash
 uv sync
-# edit config/brand.toml: replace every CHANGE value, then set mode = "live"
-uv run python -m igops vault put vault://<brand>/meta/system_user_token --prompt
-uv run python -m igops vault put vault://<brand>/proxy/a --prompt      # http://user:pass@host:port
-uv run python -m igops vault put vault://<brand>/proxy/b --prompt
-uv run python -m igops proxy-check
+uv run python -m igops setup     # answer each question; secrets are hidden and go to the vault
+uv run python -m igops doctor    # repeat until it says "Ready to go live."
 ```
+
+`setup` keeps a backup of the old config at `config/brand.toml.bak`. For HashiCorp Vault, export `VAULT_TOKEN` first. For 1Password, export `OP_SERVICE_ACCOUNT_TOKEN`.
 
 ## 2. Provision (operator plus task owner)
 

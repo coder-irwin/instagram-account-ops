@@ -1,6 +1,6 @@
 # Offboarding report: temp.tester@test-brand.example
 
-Ran 2026-10-17T10:49:14+00:00 in **simulation** mode. 4 completed, 0 pending, 0 blocked.
+Ran 2026-10-17T12:33:50+00:00 in **simulation** mode. 4 completed, 0 pending, 0 blocked.
 
 | Action | Status | Detail |
 |---|---|---|

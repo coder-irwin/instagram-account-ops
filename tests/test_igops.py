@@ -222,3 +222,120 @@ def test_proxy_credentials_never_logged(pool, app):
     for n in "ab":
         url = app.vault.get(ref(app.cfg.brand_key, "proxy", n))
         assert url not in log and url.split("@")[0].split(":")[-1] not in log
+
+
+# ---------------------------------------------------------------- going live
+
+def test_hashicorp_adapter_against_fake_server():
+    import httpx
+    from igops.vault import HashiCorpVault
+    store, meta = {}, {}
+
+    def handler(req: httpx.Request):
+        path = req.url.path
+        kind, key = ("data", path.split("/data/", 1)[1]) if "/data/" in path else ("meta", path.split("/metadata/", 1)[1])
+        assert req.headers["X-Vault-Token"] == "t0k3n-xyz"
+        if req.method == "POST" and kind == "data":
+            store[key] = json.loads(req.content)["data"]; meta.setdefault(key, {"v": 0}); meta[key]["v"] += 1
+            return httpx.Response(200, json={})
+        if req.method == "POST":
+            meta[key]["cm"] = json.loads(req.content)["custom_metadata"]; return httpx.Response(204)
+        if key not in store:
+            return httpx.Response(404)
+        if kind == "data":
+            return httpx.Response(200, json={"data": {"data": store[key]}})
+        return httpx.Response(200, json={"data": {"current_version": meta[key]["v"], "custom_metadata": meta[key].get("cm")}})
+    v = HashiCorpVault("http://vault.test", token="t0k3n-xyz",
+                       client=httpx.Client(base_url="http://vault.test", transport=httpx.MockTransport(handler),
+                                           headers={"X-Vault-Token": "t0k3n-xyz"}))
+    v.put("vault://b/x", "s3cret", meta={"purpose": "test"})
+    v.put("vault://b/x", "s3cret2")
+    assert v.get("vault://b/x") == "s3cret2" and v.exists("vault://b/x") and not v.exists("vault://b/y")
+    assert v.metadata("vault://b/x")["version"] == 2 and v.metadata("vault://b/x")["purpose"] == "test"
+    assert "s3cret2" not in core.redact("value s3cret2")
+
+
+def test_onepassword_adapter_never_puts_secrets_on_the_command_line():
+    from types import SimpleNamespace
+    from igops.vault import OnePasswordVault
+    items, argv_seen = {}, []
+
+    def runner(args, input=None):
+        argv_seen.append(" ".join(args))
+        if args[:2] == ["item", "create"]:
+            t = json.loads(input); items[t["title"]] = t
+            return SimpleNamespace(returncode=0, stdout="{}")
+        if args[:2] == ["item", "get"]:
+            it = items.get(args[2])
+            return SimpleNamespace(returncode=0 if it else 1, stdout=json.dumps(it or {}))
+        if args[:2] == ["item", "delete"]:
+            items.pop(args[2], None); return SimpleNamespace(returncode=0, stdout="")
+        if args[0] == "read":
+            title = args[1][len("op://V/"):].rsplit("/password", 1)[0]
+            return SimpleNamespace(returncode=0, stdout=items[title]["fields"][0]["value"] + "\n")
+    v = OnePasswordVault("V", runner=runner)
+    v.put("vault://b/pw", "hunter2!!", meta={"purpose": "test"})
+    assert v.get("vault://b/pw") == "hunter2!!" and v.metadata("vault://b/pw")["version"] == 1
+    assert not any("hunter2" in a for a in argv_seen)
+
+
+def test_go_live_rehearsal_setup_doctor_and_live_provision(tmp_path):
+    """The real code paths with fake GAJAN services: setup -> doctor -> live provisioning."""
+    import httpx
+    from datetime import timedelta
+    from igops import golive
+    from igops.providers.meta import MetaGraph
+    core._offset = timedelta(0)
+    cfg_path = tmp_path / "brand.toml"; cfg_path.write_text(CFG.read_text())
+    logo = tmp_path / "logo.png"; logo.write_bytes(b"png")
+    ep = NeutralEndpoint(port=0)
+    creds = {n: (f"u{n}", pysecrets.token_urlsafe(8)) for n in "ab"}
+    px = {n: TestProxy(f"proxy-{n}", *creds[n]) for n in "ab"}
+    answers = iter(["acme-live", "Acme Live", "acme.test", "https://acme.test", "Shopping & retail",
+                    "Acme test account for operations prototype.", str(logo), "owner@acme.test", "lead@acme.test",
+                    "+1 555 0100 999", "998877", f"http://127.0.0.1:{ep.port}/ip", "local",
+                    "owner@acme.test", "editor@acme.test", "temp@acme.test"])
+    secret_answers = iter(["EAAtesttokenvalue1234567890abcdef", px["a"].url(*creds["a"]), px["b"].url(*creds["b"]), ""])
+    golive.setup(cfg_path, tmp_path, ask=lambda q: next(answers), ask_secret=lambda q: next(secret_answers))
+
+    profile = {"username": None, "name": "Acme Live", "biography": "Acme test account for operations prototype.",
+               "website": "https://acme.test"}
+
+    def graph(req: httpx.Request):
+        assert req.url.params["access_token"] == "EAAtesttokenvalue1234567890abcdef"
+        if req.url.path.endswith("/me"):
+            return httpx.Response(200, json={"id": "1", "name": "acme system user"})
+        return httpx.Response(200, json={**profile, "id": req.url.path.rsplit("/", 1)[1]})
+    app = build(cfg_path, tmp_path, echo=False)
+    app.meta = MetaGraph(app.vault, app.cfg.meta_token_ref, app.log, client=httpx.Client(transport=httpx.MockTransport(graph)))
+    rows = golive.doctor(app)
+    assert all(r["ok"] for r in rows), [r for r in rows if not r["ok"]]
+
+    b = app.cfg.brand_key
+    ev = {"handle:": lambda: {"handle": app.store.account(b)["handle_candidates"][0]},
+          "email:": lambda: {"alias": "instagram@acme.test"}, "phone:": lambda: {"phone": "+1 555 0100 999"},
+          "signup:": lambda: {"handle": app.store.account(b)["handle"], "created": "new"},
+          "2fa:": lambda: {"method": "authenticator_app"}, "business:": lambda: {"ig_user_id": "17841499"},
+          "profile:": lambda: {"done": "yes"}}
+    for _ in range(20):
+        out = provision.run(app)
+        if out != "waiting_human":
+            break
+        for t in app.tasks.open_tasks():
+            if t["key"].startswith("2fa-codes"):
+                app.vault.put(app.store.account(b)["vault_refs"]["backup_codes"], "12345678 87654321")
+                app.tasks.complete(t["id"], {"stored": "yes"}, by="t")
+            elif t["key"].startswith("role-"):
+                app.tasks.complete(t["id"], {"granted": "yes"}, by="t")
+            else:
+                k = next((k for k in ev if t["key"].startswith(k)), None)
+                if k:
+                    if k == "business:":
+                        profile["username"] = app.store.account(b)["handle"]
+                    app.tasks.complete(t["id"], ev[k](), by="t")
+    acc = app.store.account(b)
+    assert out == "complete" and acc["status"] == "active"
+    assert acc["last_verified_how"] == "integration-verified"            # the real client, not the simulation
+    assert reports.secret_scan(app)["leaks"] == []
+    assert "EAAtesttoken" not in cfg_path.read_text()
+    ep.stop(); [x.stop() for x in px.values()]

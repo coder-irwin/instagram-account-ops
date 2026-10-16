@@ -38,6 +38,8 @@ class Config:
     people: list[Person]
     proxies: list[dict]
     proxy_policy: dict
+    vault: dict = field(default_factory=lambda: {"backend": "local"})
+    path: str = "config/brand.toml"
 
     @property
     def simulation(self) -> bool:
@@ -68,6 +70,7 @@ def load(path: str | Path = "config/brand.toml") -> Config:
         meta_business_id=meta.get("business_id", ""), meta_ig_user_id=meta.get("ig_user_id", ""),
         meta_token_ref=meta.get("token_ref", ""), people=people, proxies=raw.get("proxies", []),
         proxy_policy=raw.get("proxy_policy", {}),
+        vault=raw.get("vault", {"backend": "local"}), path=str(path),
     )
     problems = []
     if len(cfg.bio) > 150:
