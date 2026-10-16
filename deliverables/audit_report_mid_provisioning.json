@@ -1,0 +1,42 @@
+{
+  "audit_id": "audit-20261017T104913",
+  "resolved_followups": [],
+  "ran_at": "2026-10-17T10:49:13+00:00",
+  "mode": "simulation",
+  "checks_run": 9,
+  "findings": [
+    {
+      "brand": "northwind-test",
+      "check": "backup_codes_missing",
+      "severity": "high",
+      "detail": "no backup codes in the vault",
+      "verification": "integration-verified",
+      "task": 6
+    },
+    {
+      "brand": "northwind-test",
+      "check": "two_factor_off",
+      "severity": "high",
+      "detail": "two-factor is not recorded as enabled",
+      "verification": "unverified",
+      "task": 7
+    },
+    {
+      "brand": "northwind-test",
+      "check": "setup_incomplete",
+      "severity": "medium",
+      "detail": "setup incomplete (status created)",
+      "verification": "human-confirmed",
+      "task": 8
+    },
+    {
+      "brand": "northwind-test",
+      "check": "verification_stale",
+      "severity": "low",
+      "detail": "last verified never",
+      "verification": "integration-verified (simulated)",
+      "task": 9
+    }
+  ],
+  "schedule": "weekly, Mondays 09:00 (see README for the cron line)"
+}

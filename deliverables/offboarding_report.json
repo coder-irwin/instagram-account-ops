@@ -1,0 +1,32 @@
+{
+  "person": "temp.tester@test-brand.example",
+  "ran_at": "2026-10-17T10:49:14+00:00",
+  "mode": "simulation",
+  "summary": {
+    "completed": 4,
+    "pending": 0,
+    "blocked": 0
+  },
+  "actions": [
+    {
+      "action": "remove insights_viewer on northwind-test/business_suite",
+      "status": "completed",
+      "detail": "human-confirmed"
+    },
+    {
+      "action": "rotate password for @northwind.test.co",
+      "status": "completed",
+      "detail": "new password live on Instagram (human-confirmed)"
+    },
+    {
+      "action": "replace backup codes for @northwind.test.co",
+      "status": "completed",
+      "detail": "new codes stored; the exposed set was revoked on Instagram"
+    },
+    {
+      "action": "revoke vault access",
+      "status": "completed",
+      "detail": "all secrets they could read are rotated"
+    }
+  ]
+}

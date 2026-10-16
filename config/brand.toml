@@ -1,0 +1,62 @@
+# Test brand configuration. Values marked CHANGE come from GAJAN's test environment.
+# This file holds no secrets: only vault references (vault://...) and non-secret facts.
+
+mode = "simulation"            # "simulation" (no real Instagram calls) or "live"
+
+[brand]
+key = "northwind-test"         # CHANGE: GAJAN's throwaway test brand
+name = "Northwind Test Co"     # CHANGE
+company_domain = "test-brand.example"        # CHANGE: test company email domain
+website = "https://test-brand.example"       # CHANGE
+category = "Shopping & retail"               # CHANGE
+bio = "Test brand account operated by GAJAN Group for an internal operations prototype."
+profile_image = "assets/brand_logo.png"      # CHANGE: from the brand kit
+
+[ops]
+owner = "ops.owner@test-brand.example"           # CHANGE: owner of human tasks
+escalate_to = "ops.lead@test-brand.example"      # CHANGE: escalation contact
+signup_due_hours = 24
+task_due_hours = 24
+stale_access_days = 90
+stale_verification_days = 7
+
+[company_contacts]
+# Company-controlled recovery details. Anything else is flagged by the audit.
+phones = ["+1 555 0100 200"]                     # CHANGE: test company phone
+
+[meta]
+business_id = ""                                  # CHANGE: GAJAN's separate Meta business id
+ig_user_id = ""                                   # filled once the business account is linked
+token_ref = "vault://northwind-test/meta/system_user_token"
+
+# People and the least-privilege role each needs. Surfaces: instagram, business_suite.
+[[people]]
+email = "ops.owner@test-brand.example"
+name = "Ops Owner"
+roles = { business_suite = "admin" }
+
+[[people]]
+email = "content.editor@test-brand.example"
+name = "Content Editor"
+roles = { business_suite = "content_editor" }
+
+[[people]]
+email = "temp.tester@test-brand.example"          # the departing member for the offboarding test
+name = "Temporary Tester"
+test_member = true
+roles = { business_suite = "insights_viewer" }    # designated temporary, least-privilege role
+vault_access = ["password", "backup_codes"]       # what this person could see, for rotation
+
+[[proxies]]
+name = "proxy-a"
+url_ref = "vault://northwind-test/proxy/a"        # value: http://user:pass@host:port
+[[proxies]]
+name = "proxy-b"
+url_ref = "vault://northwind-test/proxy/b"
+
+[proxy_policy]
+neutral_endpoint = "http://127.0.0.1:8899/ip"     # CHANGE: GAJAN's neutral test endpoint
+connect_timeout_s = 3
+read_timeout_s = 5
+max_retries = 3
+health_interval_s = 60

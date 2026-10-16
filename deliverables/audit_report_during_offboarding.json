@@ -1,0 +1,26 @@
+{
+  "audit_id": "audit-20261017T104914",
+  "resolved_followups": [],
+  "ran_at": "2026-10-17T10:49:14+00:00",
+  "mode": "simulation",
+  "checks_run": 9,
+  "findings": [
+    {
+      "brand": "northwind-test",
+      "check": "backup_codes_exposed",
+      "severity": "high",
+      "detail": "backup codes were exposed and not yet replaced",
+      "verification": "integration-verified",
+      "task": 19
+    },
+    {
+      "brand": "northwind-test",
+      "check": "removal_pending:temp.tester@test-brand.example",
+      "severity": "high",
+      "detail": "role removal for temp.tester@test-brand.example not confirmed yet",
+      "verification": "unverified",
+      "task": 20
+    }
+  ],
+  "schedule": "weekly, Mondays 09:00 (see README for the cron line)"
+}

@@ -1,0 +1,202 @@
+
+==============================================================================
+1. Provisioning: automation runs until it needs a person
+==============================================================================
+[09:49:13] run.start              provisioning northwind-test (simulation)
+[09:49:13] step.done              register: register entry for northwind-test; 3 people with least-privilege roles requested
+[09:49:13] step.done              suggest_handles: candidates: @northwindtestco, @northwind.test.co, @northwindtestco.official, @northwindtestco_hq, @northwindtestco.team, @thenorthwindtestco
+[09:49:13] task.created           #1 Check handle availability on Instagram and pick one -> ops.owner@test-brand.example, due 2026-10-17T09:49
+[09:49:13] notify.assigned        to ops.owner@test-brand.example: New task #1: Check handle availability on Instagram and pick one
+[09:49:13] step.waiting           choose_handle: waiting on human task handle:northwind-test
+[09:49:13] run.end                provisioning outcome: waiting_human
+[09:49:13] task.completed         #1 Check handle availability on Instagram and pick one (by ops.owner@test-brand.example (simulated))
+[09:49:13] run.start              provisioning northwind-test (simulation)
+[09:49:13] step.done              choose_handle: @northwind.test.co chosen (human-confirmed available)
+[09:49:13] task.created           #2 Create company email alias instagram@test-brand.example -> ops.owner@test-brand.example, due 2026-10-17T09:49
+[09:49:13] notify.assigned        to ops.owner@test-brand.example: New task #2: Create company email alias instagram@test-brand.example
+[09:49:13] step.waiting           email_alias: waiting on human task email:northwind-test
+[09:49:13] run.end                provisioning outcome: waiting_human
+[09:49:13] task.completed         #2 Create company email alias instagram@test-brand.example (by ops.owner@test-brand.example (simulated))
+[09:49:13] run.start              provisioning northwind-test (simulation)
+[09:49:13] step.done              email_alias: recovery email in***@test-brand.example (company domain)
+[09:49:13] task.created           #3 Reserve and assign a company-controlled phone number -> ops.owner@test-brand.example, due 2026-10-17T09:49
+[09:49:13] notify.assigned        to ops.owner@test-brand.example: New task #3: Reserve and assign a company-controlled phone number
+[09:49:13] step.waiting           phone: waiting on human task phone:northwind-test
+[09:49:13] run.end                provisioning outcome: waiting_human
+[09:49:13] task.completed         #3 Reserve and assign a company-controlled phone number (by ops.owner@test-brand.example (simulated))
+[09:49:13] run.start              provisioning northwind-test (simulation)
+[09:49:13] step.done              phone: recovery phone ***200 (company-controlled)
+[09:49:13] step.done              credentials: password generated in vault at vault://northwind-test/instagram/password
+[09:49:13] task.created           #4 Sign up @northwind.test.co on Instagram and complete verification -> ops.owner@test-brand.example, due 2026-10-17T09:49
+[09:49:13] notify.assigned        to ops.owner@test-brand.example: New task #4: Sign up @northwind.test.co on Instagram and complete verification
+[09:49:13] step.waiting           human_signup: waiting on human task signup:northwind-test
+[09:49:13] run.end                provisioning outcome: waiting_human
+
+==============================================================================
+2. Nobody does the signup: reminder, then escalation
+==============================================================================
+[06:49:13] notify.reminder        to ops.owner@test-brand.example: Reminder: task #4 due 2026-10-17T09:49
+sweep: {'reminded': [4], 'escalated': []}
+[10:49:13] notify.escalation      to ops.lead@test-brand.example: OVERDUE task #4: Sign up @northwind.test.co on Instagram and complete verification
+[10:49:13] task.escalated         #4 overdue, escalated to ops.lead@test-brand.example
+sweep: {'reminded': [], 'escalated': [4]}
+sweep again (no repeat escalation): {'reminded': [], 'escalated': []}
+
+==============================================================================
+3. Signup done; then the process crashes mid-run and resumes
+==============================================================================
+[10:49:13] task.completed         #4 Sign up @northwind.test.co on Instagram and complete verification (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] step.done              human_signup: @northwind.test.co exists (new), human-confirmed
+[10:49:13] run.crashed            simulated crash: process killed (step two_factor left as 'running')
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] task.created           #5 Enable two-factor authentication on @northwind.test.co -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #5: Enable two-factor authentication on @northwind.test.co
+[10:49:13] step.waiting           two_factor: waiting on human task 2fa:northwind-test
+[10:49:13] run.end                provisioning outcome: waiting_human
+signup tasks before crash: 1, after resume: 1 (no duplicate account)
+
+==============================================================================
+3b. An audit run mid-provisioning flags the security gaps
+==============================================================================
+[10:49:13] task.created           #6 Audit: no backup codes in the vault -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #6: Audit: no backup codes in the vault
+[10:49:13] task.created           #7 Audit: two-factor is not recorded as enabled -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #7: Audit: two-factor is not recorded as enabled
+[10:49:13] task.created           #8 Audit: setup incomplete (status created) -> ops.owner@test-brand.example, due 2026-10-20T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #8: Audit: setup incomplete (status created)
+[10:49:13] task.created           #9 Audit: last verified never -> ops.owner@test-brand.example, due 2026-10-20T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #9: Audit: last verified never
+[10:49:13] audit.done             audit-20261017T104913: 9 checks, 4 findings
+  [high] no backup codes in the vault  (integration-verified, task #6)
+  [high] two-factor is not recorded as enabled  (unverified, task #7)
+  [medium] setup incomplete (status created)  (human-confirmed, task #8)
+  [low] last verified never  (integration-verified (simulated), task #9)
+
+==============================================================================
+4. Two-factor, business link, profile, roles; a transient API error on verification
+==============================================================================
+[10:49:13] task.completed         #5 Enable two-factor authentication on @northwind.test.co (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] task.created           #10 Store the backup codes in the vault -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #10: Store the backup codes in the vault
+[10:49:13] step.waiting           two_factor: waiting on human task 2fa-codes:northwind-test
+[10:49:13] run.end                provisioning outcome: waiting_human
+[10:49:13] task.completed         #10 Store the backup codes in the vault (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] step.done              two_factor: two-factor on (authenticator_app); backup codes stored at vault://northwind-test/instagram/backup_codes
+[10:49:13] task.created           #11 Convert @northwind.test.co to a business account and link to Meta -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #11: Convert @northwind.test.co to a business account and link to Meta
+[10:49:13] step.waiting           business_link: waiting on human task business:northwind-test
+[10:49:13] run.end                provisioning outcome: waiting_human
+[10:49:13] task.completed         #11 Convert @northwind.test.co to a business account and link to Meta (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] step.done              business_link: business account linked, Instagram id 17841400000000001
+[10:49:13] task.created           #12 Complete the @northwind.test.co profile -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #12: Complete the @northwind.test.co profile
+[10:49:13] step.waiting           profile: waiting on human task profile:northwind-test
+[10:49:13] run.end                provisioning outcome: waiting_human
+[10:49:13] task.completed         #12 Complete the @northwind.test.co profile (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] step.done              profile: profile set (human-confirmed; API check runs in final verification)
+[10:49:13] task.created           #13 Grant content_editor on business_suite to content.editor@test-brand.example -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #13: Grant content_editor on business_suite to content.editor@test-brand.example
+[10:49:13] task.created           #14 Grant admin on business_suite to ops.owner@test-brand.example -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #14: Grant admin on business_suite to ops.owner@test-brand.example
+[10:49:13] task.created           #15 Grant insights_viewer on business_suite to temp.tester@test-brand.example -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:13] notify.assigned        to ops.owner@test-brand.example: New task #15: Grant insights_viewer on business_suite to temp.tester@test-brand.example
+[10:49:13] step.waiting           roles: waiting on human task role-content.editor@test-brand.example-business_suite:northwind-test
+[10:49:13] run.end                provisioning outcome: waiting_human
+[10:49:13] task.completed         #13 Grant content_editor on business_suite to content.editor@test-brand.example (by ops.owner@test-brand.example (simulated))
+[10:49:13] task.completed         #14 Grant admin on business_suite to ops.owner@test-brand.example (by ops.owner@test-brand.example (simulated))
+[10:49:13] task.completed         #15 Grant insights_viewer on business_suite to temp.tester@test-brand.example (by ops.owner@test-brand.example (simulated))
+[10:49:13] run.start              provisioning northwind-test (simulation)
+[10:49:13] step.done              roles: 3 least-privilege roles granted (human-confirmed)
+[10:49:13] step.retry             verify: transient error (simulated Meta API 503), retry 1/2 in 0.6s
+[10:49:14] step.done              verify: @northwind.test.co verified via meta-simulated: username, bio and website match
+[10:49:14] run.end                provisioning outcome: complete
+provisioning outcome: complete
+
+==============================================================================
+5. Weekly audit after provisioning (earlier follow-ups auto-close when fixed)
+==============================================================================
+[10:49:14] audit.resolved         #6 closed: check now passes
+[10:49:14] audit.resolved         #7 closed: check now passes
+[10:49:14] audit.resolved         #8 closed: check now passes
+[10:49:14] audit.resolved         #9 closed: check now passes
+[10:49:14] audit.done             audit-20261017T104914: 9 checks, 0 findings
+
+==============================================================================
+6. Offboarding the temporary tester
+==============================================================================
+[10:49:14] task.created           #16 Remove temp.tester@test-brand.example from northwind-test business_suite -> ops.owner@test-brand.example, due 2026-10-17T14:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #16: Remove temp.tester@test-brand.example from northwind-test business_suite
+[10:49:14] task.created           #17 Change the @northwind.test.co password -> ops.owner@test-brand.example, due 2026-10-17T14:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #17: Change the @northwind.test.co password
+[10:49:14] task.created           #18 Replace @northwind.test.co backup codes -> ops.owner@test-brand.example, due 2026-10-17T14:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #18: Replace @northwind.test.co backup codes
+[10:49:14] offboard.run           offboarding temp.tester@test-brand.example: 0 completed, 4 pending, 0 blocked
+[10:49:14] task.created           #19 Audit: backup codes were exposed and not yet replaced -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #19: Audit: backup codes were exposed and not yet replaced
+[10:49:14] task.created           #20 Audit: role removal for temp.tester@test-brand.example not confirmed yet -> ops.owner@test-brand.example, due 2026-10-18T10:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #20: Audit: role removal for temp.tester@test-brand.example not confirmed yet
+[10:49:14] audit.done             audit-20261017T104914: 9 checks, 2 findings
+[10:49:14] task.completed         #16 Remove temp.tester@test-brand.example from northwind-test business_suite (by ops.owner@test-brand.example (simulated))
+[10:49:14] task.completed         #17 Change the @northwind.test.co password (by ops.owner@test-brand.example (simulated))
+[10:49:14] task.completed         #18 Replace @northwind.test.co backup codes (by ops.owner@test-brand.example (simulated))
+[10:49:14] offboard.run           offboarding temp.tester@test-brand.example: 4 completed, 0 pending, 0 blocked
+[10:49:14] audit.resolved         #19 closed: check now passes
+[10:49:14] audit.resolved         #20 closed: check now passes
+[10:49:14] audit.done             audit-20261017T104914: 9 checks, 0 findings
+
+==============================================================================
+6b. Three months later: the weekly audit catches drift and stale access
+==============================================================================
+[10:49:14] drift.reported         owner reports the recovery email was changed to a personal address (simulated)
+[10:49:14] task.created           #21 Audit: recovery email no***@gmail.com is not a company address -> ops.owner@test-brand.example, due 2027-01-21T10:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #21: Audit: recovery email no***@gmail.com is not a company address
+[10:49:14] task.reopened          #9 reopened: Audit: last verified 2026-10-17T10:49:14+00:00
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: Reopened task #9: Audit: last verified 2026-10-17T10:49:14+00:00
+[10:49:14] task.created           #22 Audit: access for content.editor@test-brand.example not reconfirmed in 90 days -> ops.owner@test-brand.example, due 2027-01-23T10:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #22: Audit: access for content.editor@test-brand.example not reconfirmed in 90 days
+[10:49:14] task.created           #23 Audit: access for ops.owner@test-brand.example not reconfirmed in 90 days -> ops.owner@test-brand.example, due 2027-01-23T10:49
+[10:49:14] notify.assigned        to ops.owner@test-brand.example: New task #23: Audit: access for ops.owner@test-brand.example not reconfirmed in 90 days
+[10:49:14] audit.done             audit-20270120T104914: 9 checks, 4 findings
+  [high] recovery email no***@gmail.com is not a company address  (human-confirmed, task #21)
+  [low] last verified 2026-10-17T10:49:14+00:00  (integration-verified (simulated), task #9)
+  [medium] access for content.editor@test-brand.example not reconfirmed in 90 days  (human-confirmed, task #22)
+  [medium] access for ops.owner@test-brand.example not reconfirmed in 90 days  (human-confirmed, task #23)
+
+==============================================================================
+7. Proxies on a neutral endpoint: health, pinning, rotation, failover, challenge
+==============================================================================
+[10:49:14] proxy.health           proxy-a healthy (36 ms)
+[10:49:14] proxy.health           proxy-b healthy (6 ms)
+[10:49:14] proxy.session_open     session for demo-session pinned to proxy-a
+3 requests in one session all used: {'proxy-a'}
+[10:49:14] proxy.session_end      session for demo-session on proxy-a ended: scheduled rotation (age or request budget reached)
+[10:49:14] proxy.session_open     session for demo-session pinned to proxy-b
+[10:49:14] proxy.rotated          rotated demo-session: proxy-a -> proxy-b (scheduled)
+after the request budget, next request uses: proxy-b
+[10:49:14] proxy.retry            proxy-b: ConnectError, retry 1/3 on the same proxy
+[10:49:15] proxy.retry            proxy-b: ConnectError, retry 2/3 on the same proxy
+[10:49:15] proxy.retry            proxy-b: ConnectError, retry 3/3 on the same proxy
+[10:49:16] proxy.session_end      session for demo-session on proxy-b ended: proxy proxy-b unreachable after 3 attempts (ConnectError)
+[10:49:16] proxy.failover         failing over demo-session to a new session
+[10:49:16] proxy.session_open     session for demo-session pinned to proxy-a
+proxy-b stopped; failover served by: proxy-a
+[10:49:16] proxy.session_open     session for challenge-session pinned to proxy-a
+[10:49:16] proxy.challenge        HTTP 403 security challenge via proxy-a: PAUSED, no retry, no rotation, human review required
+[10:49:16] task.created           #24 Security challenge on challenge-session: review before any automation resumes -> ops.owner@test-brand.example, due 2027-01-20T12:49
+[10:49:16] notify.assigned        to ops.owner@test-brand.example: New task #24: Security challenge on challenge-session: review before any automation resumes
+challenge -> paused: HTTP 403 security challenge via proxy-a
+further requests refused until a human clears it: challenge-session is paused for human review; automation will not reconnect
+
+==============================================================================
+8. Reports and secret scan
+==============================================================================
+wrote state/demo/reports/account_register.md
+wrote state/demo/reports/tasks.md
+wrote state/demo/reports/run_log_redacted.jsonl
+[10:49:17] secret_scan            secret scan: 7 secrets checked across 19 files, 0 leaks
+secret scan: {'files_scanned': 19, 'secrets_checked': 7, 'leaks': []}

@@ -1,0 +1,42 @@
+{
+  "audit_id": "audit-20270120T104914",
+  "resolved_followups": [],
+  "ran_at": "2027-01-20T10:49:14+00:00",
+  "mode": "simulation",
+  "checks_run": 9,
+  "findings": [
+    {
+      "brand": "northwind-test",
+      "check": "recovery_email_external",
+      "severity": "high",
+      "detail": "recovery email no***@gmail.com is not a company address",
+      "verification": "human-confirmed",
+      "task": 21
+    },
+    {
+      "brand": "northwind-test",
+      "check": "verification_stale",
+      "severity": "low",
+      "detail": "last verified 2026-10-17T10:49:14+00:00",
+      "verification": "integration-verified (simulated)",
+      "task": 9
+    },
+    {
+      "brand": "northwind-test",
+      "check": "stale_access:content.editor@test-brand.example",
+      "severity": "medium",
+      "detail": "access for content.editor@test-brand.example not reconfirmed in 90 days",
+      "verification": "human-confirmed",
+      "task": 22
+    },
+    {
+      "brand": "northwind-test",
+      "check": "stale_access:ops.owner@test-brand.example",
+      "severity": "medium",
+      "detail": "access for ops.owner@test-brand.example not reconfirmed in 90 days",
+      "verification": "human-confirmed",
+      "task": 23
+    }
+  ],
+  "schedule": "weekly, Mondays 09:00 (see README for the cron line)"
+}

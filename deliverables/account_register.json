@@ -1,0 +1,45 @@
+{
+  "generated_at": "2027-01-20T10:49:17+00:00",
+  "mode": "simulation",
+  "accounts": [
+    {
+      "brand": "northwind-test",
+      "handle": "@northwind.test.co",
+      "owner": "ops.owner@test-brand.example",
+      "recovery_email": "in***@test-brand.example",
+      "recovery_phone": "***200",
+      "two_factor_method": "authenticator_app",
+      "vault_refs": {
+        "password": "vault://northwind-test/instagram/password",
+        "backup_codes": "vault://northwind-test/instagram/backup_codes"
+      },
+      "people_and_roles": [
+        {
+          "person": "content.editor@test-brand.example",
+          "surface": "business_suite",
+          "role": "content_editor",
+          "state": "granted",
+          "verified": "human-confirmed"
+        },
+        {
+          "person": "ops.owner@test-brand.example",
+          "surface": "business_suite",
+          "role": "admin",
+          "state": "granted",
+          "verified": "human-confirmed"
+        },
+        {
+          "person": "temp.tester@test-brand.example",
+          "surface": "business_suite",
+          "role": "insights_viewer",
+          "state": "removed",
+          "verified": "human-confirmed"
+        }
+      ],
+      "status": "active",
+      "blockers": [],
+      "last_verified_at": "2026-10-17T10:49:14+00:00",
+      "last_verified_how": "integration-verified (simulated)"
+    }
+  ]
+}

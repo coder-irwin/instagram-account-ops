@@ -1,0 +1,12 @@
+{
+  "audit_id": "audit-20261017T104914",
+  "resolved_followups": [
+    19,
+    20
+  ],
+  "ran_at": "2026-10-17T10:49:14+00:00",
+  "mode": "simulation",
+  "checks_run": 9,
+  "findings": [],
+  "schedule": "weekly, Mondays 09:00 (see README for the cron line)"
+}

@@ -1,0 +1,32 @@
+{
+  "person": "temp.tester@test-brand.example",
+  "ran_at": "2026-10-17T10:49:14+00:00",
+  "mode": "simulation",
+  "summary": {
+    "completed": 0,
+    "pending": 4,
+    "blocked": 0
+  },
+  "actions": [
+    {
+      "action": "remove insights_viewer on northwind-test/business_suite",
+      "status": "pending",
+      "detail": "task 16 with ops.owner@test-brand.example"
+    },
+    {
+      "action": "rotate password for @northwind.test.co",
+      "status": "pending",
+      "detail": "new password staged in vault; task 17"
+    },
+    {
+      "action": "replace backup codes for @northwind.test.co",
+      "status": "pending",
+      "detail": "old set marked exposed; task 18"
+    },
+    {
+      "action": "revoke vault access",
+      "status": "pending",
+      "detail": "waits until every exposed secret is rotated"
+    }
+  ]
+}
