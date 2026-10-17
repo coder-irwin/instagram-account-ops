@@ -2,13 +2,15 @@
 
 **Principle.** Automate the coordination, never the platform. People do every Instagram step without a supported integration. Secrets live only in the vault.
 
+**Access.** GAJAN's test environment was requested on 16 and 17 October but had not arrived by submission. Live mode records the blockers, and `setup`, `doctor` and `provision` resume once it arrives. I did not create my own Instagram account, because it wouldn't be company-authorised.
+
 ## What I built
 
 - **Resumable provisioning in 12 steps.** Human steps are keyed tasks with owner, deadline, reminders and escalation. Finished steps never rerun, and one signup task means no duplicate account.
-- **An encrypted, versioned vault** with hidden-input entry, log redaction and a secret scan of every output.
-- **A register, plus a weekly audit** with labelled findings. Follow-ups reopen when a problem recurs and close when it's fixed.
-- **Offboarding** that removes roles, rotates the password, replaces backup codes, then revokes vault access. Each action is reported as completed, pending or blocked.
-- **A proxy pool** with health checks, timeouts, bounded retries, pinned sessions, rotation and failover only between sessions, redacted logs, and a pause on any challenge.
+- **An encrypted, versioned vault** with hidden entry, log redaction and a leak scan of every output.
+- **A register and weekly audit** with labelled findings, and follow-ups that reopen or close themselves.
+- **Offboarding:** remove roles, rotate the password, replace backup codes, revoke vault access, each reported as completed, pending or blocked.
+- **A proxy pool:** health checks, timeouts, bounded retries, pinned sessions, rotation only between sessions, and a pause on any challenge.
 
 ## What I skipped, and why
 
@@ -21,19 +23,17 @@
 - **Signup, verification, two-factor and profile edits stay human.** No supported API exists, and automating signup is prohibited.
 - **A person checks handle availability.** Bulk-probing profile URLs is restricted automated access.
 - **Proxies.** Rotating IPs against Instagram would look like evasion. Meta's official API needs no proxy, so Instagram is never reached through one. Rotation is shown only on a neutral endpoint, between sessions.
-- **Challenges, blocks and rate limits pause and escalate.** They are never retried, rotated around or failed over, and a test enforces this.
+- **Challenges, blocks and rate limits pause and escalate.** They are never retried or rotated around, and a test enforces this.
 
 ## Where this breaks
 
-- **The Meta API path hasn't been tested on a real account.** No test-business access was provided, so it is tested against fakes only.
-- **The local vault suits one operator,** and notifications only reach the log until SMTP or Slack is connected.
+- **No real account yet.** The Meta API, vault adapters and proxies are tested against fakes and local stand-ins only.
 - **Human-confirmed facts depend on honest evidence.** A killed process holds its run lease for up to 15 minutes.
 
 ## Next-day improvements
 
 1. Connect the real vault and Meta token, then run and record the live path.
 2. Assign and verify roles through the Business Management API.
-3. Send email or Slack notifications, and add scheduler alerts for overdue tasks and proxy health.
 
 ## AI tools used
 

@@ -6,3 +6,5 @@ state/
 .env
 .vault*
 vault.key
+docs/TASK_BRIEF*
+*.docx

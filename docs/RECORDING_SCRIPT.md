@@ -17,3 +17,11 @@ Record with Loom or QuickTime. **Before you start:** close chat apps and passwor
 **2:00 to 2:30, audit, offboarding and proxies.** Open the audit report and point to the verification labels. Open the offboarding report and point to the completed, pending and blocked columns. Show the proxy challenge lines: paused, no rotation.
 
 **2:30 to 3:00, honest blockers.** Show the register's blockers line, and say which access is still missing and the command that resumes once it arrives.
+
+## If GAJAN's access has not arrived (2 to 3 minutes)
+
+1. **0:00 to 0:20.** Show the README section "Access status at submission". Say: "The test environment wasn't provided. I asked on 16 and 17 October. Here is everything built, and exactly where it resumes."
+2. **0:20 to 1:30.** Run `uv run python -m igops demo` and scroll through the handoffs, the reminder and escalation, the crash and resume (with one signup task), the audit labels, offboarding, and the proxy challenge pause.
+3. **1:30 to 2:00.** Run `uv run python -m igops doctor` and show the 6 TODO items with their fixes. Say: "With access, it's setup, doctor, provision."
+4. **2:00 to 2:30.** Open `deliverables/account_register.md` and `deliverables/offboarding_report.md`, and point out that "simulated" is labelled.
+5. **2:30 to 3:00.** Run `uv run python -m igops vault list` to show references only, never values, and the secret scan: 0 leaks.

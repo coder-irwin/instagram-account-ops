@@ -4,6 +4,17 @@ A prototype that provisions, secures, audits and offboards **one company-authori
 
 **Read [DECISION_LOG.md](DECISION_LOG.md) first.** The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
 
+## Access status at submission
+
+The brief says GAJAN provides the test environment: a brand kit, test email and phone, a vault, a Meta business and proxies. None of these were included with the task. I asked for them by email on 16 October at 16:48, and on WhatsApp on 16 and 17 October. No access had arrived by the time I submitted.
+
+The brief asks to "record any missing access or platform blocker, and show how work resumes once it is cleared", so this submission does that:
+
+- **Everything that doesn't need GAJAN's access is built and tested.** The demo walks the whole workflow, with the missing services replaced by clearly labelled stand-ins.
+- **Live mode stops honestly.** `igops doctor` lists the 6 missing items, each with its fix. See [deliverables/doctor_before_access.txt](deliverables/doctor_before_access.txt).
+- **Going live is three commands, below.** A test rehearses that exact path against fake versions of GAJAN's services.
+- **No real Instagram account was created.** Making one with my own email and phone would not be "company-authorised", and would fail the task's own rule that recovery details be company-controlled.
+
 ## Going live in about ten minutes
 
 Every missing piece of GAJAN's test environment currently runs on a clearly labelled stand-in. Once the access arrives, three commands switch to the real thing:
