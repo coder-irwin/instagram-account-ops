@@ -139,6 +139,10 @@ class LocalVault:
     def refs(self) -> list[str]:
         return sorted(self._data)
 
+    def delete(self, ref: str) -> None:
+        if self._data.pop(ref, None) is not None:
+            self._save()
+
     def scan_values(self) -> list[str]:
         """Every secret value, for the leak scan. Never printed."""
         return [e["value"] for e in self._data.values()]
@@ -210,6 +214,10 @@ class HashiCorpVault:
     def refs(self) -> list[str]:
         return sorted(self._known)
 
+    def delete(self, ref: str) -> None:
+        self._req("DELETE", f"/v1/{self.mount}/metadata/{_path(ref)}")   # all versions
+        self._known.discard(ref)
+
     def scan_values(self) -> list[str]:
         return [self.get(r) for r in self.refs()]
 
@@ -275,6 +283,11 @@ class OnePasswordVault:
     def mark(self, ref: str, **meta) -> None:
         if self.exists(ref):
             self.put(ref, self.get(ref), meta=meta)
+
+    def delete(self, ref: str) -> None:
+        if self.exists(ref):
+            self._op("item", "delete", ref, "--vault", self.vault_name)
+        self._known.discard(ref)
 
     def refs(self) -> list[str]:
         return sorted(self._known)

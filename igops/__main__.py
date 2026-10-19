@@ -87,8 +87,17 @@ def main(argv=None) -> int:
         for t in app.tasks.open_tasks():
             print(f"#{t['id']:<3} due {t['due_at'][:16]}  {t['owner']:<32} {t['title']}\n      {t['instructions']}")
     elif args.cmd == "done":
+        bad = [e for e in args.evidence if "=" not in e]
+        if bad:
+            print(f"evidence must look like key=value, got: {' '.join(bad)}")
+            return 2
         ev = dict(e.split("=", 1) for e in args.evidence)
-        app.tasks.complete(args.id, ev, by=args.by or app.cfg.owner)
+        try:
+            t = app.tasks.complete(args.id, ev, by=args.by or app.cfg.owner)
+            print(f"task #{t['id']} done. Run `igops provision` to continue.")
+        except (ValueError, KeyError) as exc:
+            print(f"refused: {exc.args[0] if exc.args else exc}")
+            return 2
     elif args.cmd == "sweep":
         print(app.tasks.sweep())
     elif args.cmd == "vault":

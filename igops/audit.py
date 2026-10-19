@@ -81,7 +81,8 @@ def run(app: App) -> dict:
         checks += 1   # stale verification
         lv = a["last_verified_at"]
         if not lv or now() - datetime.fromisoformat(lv) > timedelta(days=cfg.stale_verification_days):
-            finding(b, "verification_stale", "low", f"last verified {lv or 'never'}", "integration-verified" + sim,
+            finding(b, "verification_stale", "low", f"last verified {lv or 'never'}",
+                    ("integration-verified" + sim) if lv else "unverified",
                     "Run `igops provision` to re-verify the profile through the Meta API.")
 
         # people and access

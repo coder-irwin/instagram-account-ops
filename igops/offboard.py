@@ -53,10 +53,11 @@ def run(app: App, person: str) -> dict:
             key = f"offboard-pw:{brand}:{person}"
             pending_ref = vref + ".next"
             if _done(app, key):
-                if v.exists(pending_ref) and not v.metadata(pending_ref).get("superseded"):
-                    # promote the staged password exactly once, after a person confirms it is live
+                if v.exists(pending_ref):
+                    # promote the staged password exactly once, after a person confirms it is live,
+                    # then delete the staging copy so the live password exists in one place only
                     v.put(vref, v.get(pending_ref), meta={"rotated_because": f"offboarding {person}"})
-                    v.mark(pending_ref, superseded=True)
+                    v.delete(pending_ref)
                 act(f"rotate password for @{acc['handle']}", "completed", "new password live on Instagram (human-confirmed)")
             else:
                 if not v.exists(pending_ref):
@@ -79,7 +80,7 @@ def run(app: App, person: str) -> dict:
                 meta = v.metadata(vref)
             if meta["version"] > meta[mark]:                      # a newer set was stored after exposure
                 v.mark(vref, exposed=False)
-                act(label, "completed", "new codes stored; the exposed set was revoked on Instagram")
+                act(label, "completed", "new codes stored (integration-verified); old set revoked on Instagram (human-confirmed)")
             else:
                 t = app.tasks.ensure(key, brand=brand, kind="offboarding", title=f"Replace @{acc['handle']} backup codes",
                                      instructions="On Instagram: Settings > Security > Two-factor > Backup codes > Get new "

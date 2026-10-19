@@ -54,10 +54,10 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 ```bash
 uv sync --extra dev
 uv run pytest -q                     # 27 behaviour tests, including a real kill -9 recovery test
-uv run python -m igops demo          # full simulated walkthrough, about 5 seconds
+uv run python -m igops demo          # full simulated walkthrough, about 10 seconds
 ```
 
-The demo writes every deliverable report to `state/demo/reports/`. A copy from the last run is in [deliverables/](deliverables/).
+The demo writes every deliverable report to `state/demo/reports/`. To show reminders, escalation and a "three months later" audit without waiting, **the demo fast-forwards its clock**. That's why some report timestamps are days or months ahead of today. A copy from the last run is in [deliverables/](deliverables/).
 
 ## What the demo shows
 

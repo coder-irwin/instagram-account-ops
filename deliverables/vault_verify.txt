@@ -1,5 +1,4 @@
-vault://monsoon-threads/instagram/backup_codes  readable  v2  sha256:d4ac1338c0d9  71 chars
-vault://monsoon-threads/instagram/password  readable  v2  sha256:db9ee02e50f9  24 chars
-vault://monsoon-threads/instagram/password.next  readable  v1  sha256:db9ee02e50f9  24 chars
-vault://monsoon-threads/proxy/a  readable  v1  sha256:bf5546c6af3c  46 chars
-vault://monsoon-threads/proxy/b  readable  v1  sha256:096dc7735bfe  46 chars
+vault://monsoon-threads/instagram/backup_codes  readable  v2  sha256:5f8a53a8c557  71 chars
+vault://monsoon-threads/instagram/password  readable  v2  sha256:f843b78322fa  24 chars
+vault://monsoon-threads/proxy/a  readable  v1  sha256:7889d61b5551  46 chars
+vault://monsoon-threads/proxy/b  readable  v1  sha256:47c75af3f065  46 chars

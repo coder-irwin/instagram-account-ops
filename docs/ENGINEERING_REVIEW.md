@@ -1,6 +1,6 @@
 # Engineering review: how this was tested and what it found
 
-After building the prototype I reviewed it as a strict assessor would. I ran adversarial probes against the riskiest areas, fixed every real defect, and added a regression test for each fix. This file records that review.
+After building the prototype I reviewed it as a strict assessor would, then verified every command and report by hand. I ran adversarial probes against the riskiest areas, fixed every real defect, and added a regression test for each fix. This file records that review.
 
 ## Evidence
 
@@ -27,6 +27,9 @@ After building the prototype I reviewed it as a strict assessor would. I ran adv
 | 7 | Rerunning offboarding re-promoted the staged password each time, and dropped completed actions from the report | Needless rotation and a misleading report | Promotion happens once, and revoked grants are kept as records | `test_offboarding_rerun_is_idempotent` |
 | 8 | A security challenge paused the account, but the next request opened a fresh session | Automation could continue after a challenge (boundaries, 15 points) | A paused account refuses every request, including failover, until a person clears it | `test_challenge_pauses_and_does_not_rotate` |
 | 9 | Proxy requests opened a new connection every time | Not a "consistent connection" during a session | One keep-alive client per session, closed when the session ends | Covered by the pinning and rotation tests |
+| 10 | Rejecting secret evidence in `done` printed a raw Python traceback | Confusing for an operator | A one-line refusal and exit code 2 | Checked by hand |
+| 11 | After rotation, the staged copy of the new password stayed in the vault | Needless duplicate secret | The staged copy is deleted once promoted | `test_offboarding_rerun_is_idempotent` |
+| 12 | "Last verified never" was labelled integration-verified, and a person's confirmation was stated as fact | Overclaimed evidence (completion evidence, 10 points) | "never" is labelled unverified, and human-confirmed facts are labelled so | Checked by hand in the reports |
 
 ## What is still unproven
 

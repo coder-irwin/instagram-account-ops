@@ -430,3 +430,4 @@ def test_offboarding_rerun_is_idempotent(tmp_path):
         rep = offboard.run(app, next(p.email for p in app.cfg.people if p.test_member))
     assert rep["summary"] == {"completed": 4, "pending": 0, "blocked": 0}
     assert app.vault.metadata(ref_)["version"] == v0 and len(app.tasks.all()) == n0
+    assert not app.vault.exists(ref_ + ".next")          # staged copy deleted after promotion
