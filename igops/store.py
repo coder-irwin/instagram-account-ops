@@ -61,6 +61,28 @@ CREATE TABLE IF NOT EXISTS leases (
 """
 
 
+def new_holder() -> str:
+    import os
+    import socket
+    import uuid
+    return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
+
+
+def _alive(holder: str) -> bool:
+    import os
+    import socket
+    parts = holder.split(":")
+    if len(parts) != 3 or parts[0] != socket.gethostname() or not parts[1].isdigit():
+        return True                       # another host or an old-style holder: trust the expiry
+    try:
+        os.kill(int(parts[1]), 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 class Store:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -69,6 +91,10 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
+        try:   # migration: keep revoked grants for the record instead of deleting them
+            self.db.execute("ALTER TABLE vault_access ADD COLUMN revoked_at TEXT")
+        except sqlite3.OperationalError:
+            pass
 
     @contextmanager
     def tx(self):
@@ -82,10 +108,13 @@ class Store:
 
     # ---------------------------------------------------------- lease
     def acquire(self, name: str, holder: str, minutes: int = 15) -> bool:
-        """One runner per workflow at a time, so two runs can never race into duplicates."""
+        """One runner per workflow at a time, so two runs can never race into duplicates.
+        Holders look like host:pid:nonce. A lease held by a process that no longer exists on
+        this host is taken over at once, so recovery after a kill is immediate, not 15 minutes later."""
         with self.tx() as db:
             row = db.execute("SELECT holder, expires_at FROM leases WHERE name=?", (name,)).fetchone()
-            if row and row["holder"] != holder and datetime.fromisoformat(row["expires_at"]) > now():
+            if row and row["holder"] != holder and datetime.fromisoformat(row["expires_at"]) > now() \
+                    and _alive(row["holder"]):
                 return False
             db.execute("INSERT OR REPLACE INTO leases VALUES (?,?,?)",
                        (name, holder, iso(now() + timedelta(minutes=minutes))))
@@ -160,13 +189,14 @@ class Store:
         return [dict(r) for r in self.db.execute(q + " ORDER BY brand, person, surface", args)]
 
     def grant_vault_access(self, ref: str, person: str):
-        self.db.execute("INSERT OR IGNORE INTO vault_access VALUES (?,?)", (ref, person))
+        self.db.execute("INSERT OR IGNORE INTO vault_access (ref, person) VALUES (?,?)", (ref, person))
 
-    def vault_refs_for(self, person: str) -> list[str]:
-        return [r["ref"] for r in self.db.execute("SELECT ref FROM vault_access WHERE person=?", (person,))]
+    def vault_refs_for(self, person: str, include_revoked: bool = True) -> list[str]:
+        q = "SELECT ref FROM vault_access WHERE person=?" + ("" if include_revoked else " AND revoked_at IS NULL")
+        return [r["ref"] for r in self.db.execute(q, (person,))]
 
     def revoke_vault_access(self, person: str):
-        self.db.execute("DELETE FROM vault_access WHERE person=?", (person,))
+        self.db.execute("UPDATE vault_access SET revoked_at=? WHERE person=? AND revoked_at IS NULL", (iso(), person))
 
     # ---------------------------------------------------------- steps
     def step(self, brand: str, name: str) -> dict | None:

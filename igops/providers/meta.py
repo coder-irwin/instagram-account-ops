@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import httpx
 
-from ..core import RunLog
+from ..core import RunLog, redact
 from ..vault import Vault
 
 GRAPH = "https://graph.facebook.com/v21.0"
@@ -30,6 +30,10 @@ class IntegrationUnavailable(Exception):
 
 class TransientError(Exception):
     """Worth retrying: timeouts, 429, 5xx."""
+
+
+class MetaApiError(Exception):
+    """A non-retryable API error. The message never contains the token or the URL."""
 
 
 class MetaGraph:
@@ -57,7 +61,15 @@ class MetaGraph:
             raise TransientError(f"Meta API {r.status_code}")
         if r.status_code in (401, 403):
             raise IntegrationUnavailable(f"Meta API refused access ({r.status_code}); check token scopes")
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # Never use raise_for_status(): its message includes the URL, and the URL carries the token.
+            try:
+                body = r.json()
+                err = body.get("error") if isinstance(body, dict) else None
+                detail = err.get("message", "") if isinstance(err, dict) else (err or "")
+            except ValueError:
+                detail = ""
+            raise MetaApiError(redact(f"Meta API HTTP {r.status_code}: {str(detail)[:160]}"))
         return r.json()
 
     def me(self) -> dict:

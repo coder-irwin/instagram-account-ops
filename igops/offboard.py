@@ -53,7 +53,8 @@ def run(app: App, person: str) -> dict:
             key = f"offboard-pw:{brand}:{person}"
             pending_ref = vref + ".next"
             if _done(app, key):
-                if v.exists(pending_ref):                         # promote the new password once confirmed
+                if v.exists(pending_ref) and not v.metadata(pending_ref).get("superseded"):
+                    # promote the staged password exactly once, after a person confirms it is live
                     v.put(vref, v.get(pending_ref), meta={"rotated_because": f"offboarding {person}"})
                     v.mark(pending_ref, superseded=True)
                 act(f"rotate password for @{acc['handle']}", "completed", "new password live on Instagram (human-confirmed)")

@@ -98,9 +98,10 @@ def secret_scan(app: App) -> dict:
         if "@" in value and "://" in value:
             # also catch the password part of proxy and SMTP URLs on its own
             values.append(value.split("://", 1)[1].split("@", 1)[0].split(":", 1)[-1])
-    files = [p for p in app.state_dir.rglob("*") if p.is_file() and p.suffix in (".md", ".json", ".jsonl", ".log", ".txt")]
+    files = [p for p in app.state_dir.rglob("*") if p.is_file() and p.name != "vault.enc"]   # incl. the database
+    blobs = {p: p.read_bytes() for p in files}
     hits = [(str(p.relative_to(app.state_dir)), i) for p in files for i, v in enumerate(values)
-            if len(v) >= 6 and v in p.read_text(errors="ignore")]
+            if len(v) >= 6 and v.encode() in blobs[p]]
     result = {"files_scanned": len(files), "secrets_checked": len(values), "leaks": hits}
     app.log.write("secret_scan", files=len(files), secrets=len(values), leaks=len(hits),
                   msg=f"secret scan: {len(values)} secrets checked across {len(files)} files, {len(hits)} leaks")

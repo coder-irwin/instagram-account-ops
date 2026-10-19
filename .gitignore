@@ -8,3 +8,4 @@ state/
 vault.key
 docs/TASK_BRIEF*
 *.docx
+.coverage

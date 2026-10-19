@@ -221,7 +221,9 @@ def steps(app: App) -> list:
             ("profile", profile), ("roles", roles), ("verify", verify)]
 
 
-def run(app: App, holder: str = "cli") -> str:
+def run(app: App, holder: str | None = None) -> str:
+    from .store import new_holder
+    holder = holder or new_holder()
     lease = f"provision:{app.cfg.brand_key}"
     if not app.store.acquire(lease, holder):
         app.log.write("run.locked", msg="another provisioning run holds the lease; not starting a second one")

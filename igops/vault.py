@@ -58,17 +58,30 @@ def generate_password(length: int = 24) -> str:
             return pw
 
 
+def key_path_for(vault_path: Path) -> Path:
+    """The key is kept outside the project, in the user's config folder (mode 600), so copying
+    or zipping the project never copies the means to decrypt it. IGOPS_VAULT_KEY overrides."""
+    import hashlib
+    base = Path(os.environ.get("IGOPS_KEY_DIR", "~/.config/igops/keys")).expanduser()
+    return base / (hashlib.sha256(str(Path(vault_path).resolve()).encode()).hexdigest()[:16] + ".key")
+
+
 class LocalVault:
     def __init__(self, path: Path, key: bytes | None = None):
         self.path = Path(path)
         key = key or os.environ.get("IGOPS_VAULT_KEY", "").encode() or None
-        key_file = self.path.with_suffix(".key")
+        key_file = key_path_for(self.path)
+        legacy = self.path.with_suffix(".key")
+        if key is None and legacy.exists() and not key_file.exists():
+            key_file.parent.mkdir(parents=True, exist_ok=True)
+            legacy.replace(key_file)          # move an old key out of the project folder
         if key is None:
             if key_file.exists():
                 key = key_file.read_bytes().strip()
             else:
                 key = Fernet.generate_key()
                 key_file.parent.mkdir(parents=True, exist_ok=True)
+                os.chmod(key_file.parent, 0o700)
                 key_file.write_bytes(key)
                 os.chmod(key_file, 0o600)
         self._f = Fernet(key)

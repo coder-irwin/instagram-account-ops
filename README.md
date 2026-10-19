@@ -2,7 +2,7 @@
 
 A prototype that provisions, secures, audits and offboards **one company-authorised Instagram brand account**. Code does the coordination and record-keeping. People do signup, verification and anything Instagram offers no supported integration for. Every handoff is a tracked task with an owner, a deadline, reminders and escalation, and the workflow resumes cleanly afterwards.
 
-**Read [DECISION_LOG.md](DECISION_LOG.md) first.** The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
+**Read [DECISION_LOG.md](DECISION_LOG.md) first.** How it was tested, and the defects that review found and fixed, are in [docs/ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md). The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
 
 ## Environment and assumptions
 
@@ -53,7 +53,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --extra dev
-uv run pytest -q                     # 20 behaviour tests
+uv run pytest -q                     # 27 behaviour tests, including a real kill -9 recovery test
 uv run python -m igops demo          # full simulated walkthrough, about 5 seconds
 ```
 
@@ -109,6 +109,7 @@ Set `mode = "live"` in `config/brand.toml` to use the real Meta API client inste
 
 ## How secrets are handled
 
+- **The vault key is kept outside the project,** in `~/.config/igops/keys` with permissions 600, so copying or zipping the project never copies the key.
 - **Secrets live only in the vault.** That covers the password, backup codes, proxy URLs, the Meta token and SMTP credentials. The database, config and reports hold only `vault://` references.
 - **Secrets are entered with `vault put --prompt`.** Input is hidden, and the command refuses values passed as arguments, which would land in shell history.
 - **Task evidence can't carry secrets.** Completing a task with a field named like `password`, `code`, `secret` or `token` is rejected.
@@ -119,7 +120,7 @@ Set `mode = "live"` in `config/brand.toml` to use the real Meta API client inste
 
 - **Steps are idempotent and recorded in SQLite.** Finished steps never rerun, and a crash leaves the step resumable.
 - **Tasks are keyed by the real-world need,** such as `signup:<brand>`. Asking twice returns the same task, so a resume cannot request a second account.
-- **A lease stops two runners** from provisioning the same account at once.
+- **A lease stops two runners** from provisioning the same account at once. A lease held by a killed process is taken over immediately.
 - **Transient errors get bounded retries** with exponential backoff and jitter. Hard errors stop the step and are recorded as failed or blocked, never silently skipped.
 - **Missing access is a blocker, not a crash.** It is written to the register with the exact command that resumes once it is cleared.
 

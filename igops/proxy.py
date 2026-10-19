@@ -50,6 +50,7 @@ class Session:
     started: float = field(default_factory=time.monotonic)
     requests: int = 0
     paused: bool = False
+    client: object = None          # one keep-alive client per session: the same connection throughout
 
 
 CHALLENGE_MARKERS = ("challenge", "checkpoint", "captcha", "verify_identity", "suspicious")
@@ -122,7 +123,7 @@ class ProxyPool:
             proxy = self._pick({avoid} if avoid else set())
         except ProxyDown:
             proxy = self._pick()                   # only one healthy proxy: reuse it rather than stop
-        s = Session(account, proxy)
+        s = Session(account, proxy, client=self._client(proxy))
         self.sessions[account] = s
         self.log.write("proxy.session_open", account=account, proxy=s.proxy.name,
                        msg=f"session for {account} pinned to {s.proxy.name}")
@@ -130,6 +131,8 @@ class ProxyPool:
 
     def end_session(self, account: str, reason: str):
         s = self.sessions.pop(account, None)
+        if s and s.client:
+            s.client.close()
         if s:
             self.log.write("proxy.session_end", account=account, proxy=s.proxy.name, reason=reason,
                            msg=f"session for {account} on {s.proxy.name} ended: {reason}")
@@ -157,8 +160,7 @@ class ProxyPool:
         last = None
         for attempt in range(1, self.p["max_retries"] + 1):
             try:
-                with self._client(s.proxy) as c:
-                    r = c.get(url)
+                r = s.client.get(url)
                 s.requests += 1
                 body = r.text.lower()
                 if r.status_code in (401, 403, 429) or any(m in body for m in CHALLENGE_MARKERS):

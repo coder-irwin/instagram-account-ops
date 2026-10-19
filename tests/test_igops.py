@@ -17,6 +17,12 @@ from igops.workflow import Done, Interrupted, run_steps
 CFG = Path(__file__).resolve().parent.parent / "config" / "brand.toml"
 
 
+@pytest.fixture(autouse=True)
+def _keys_outside_home(tmp_path_factory, monkeypatch):
+    # vault keys normally live in ~/.config/igops/keys; keep test keys out of the real home folder
+    monkeypatch.setenv("IGOPS_KEY_DIR", str(tmp_path_factory.mktemp("keys")))
+
+
 @pytest.fixture
 def app(tmp_path):
     from datetime import timedelta
@@ -339,3 +345,88 @@ def test_go_live_rehearsal_setup_doctor_and_live_provision(tmp_path):
     assert reports.secret_scan(app)["leaks"] == []
     assert "EAAtesttoken" not in cfg_path.read_text()
     ep.stop(); [x.stop() for x in px.values()]
+
+
+# ---------------------------------------------------------------- findings from the review
+
+def test_meta_errors_never_carry_the_token(app):
+    import httpx, traceback
+    from igops.providers.meta import MetaGraph, MetaApiError
+    token = "EAAleakcheck" + "y" * 30
+    app.vault.put(app.cfg.meta_token_ref, token)
+    for status in (400, 404, 422):
+        mg = MetaGraph(app.vault, app.cfg.meta_token_ref, app.log,
+                       client=httpx.Client(transport=httpx.MockTransport(lambda r, s=status: httpx.Response(s, json={"error": {"message": "x"}}))))
+        with pytest.raises(MetaApiError) as ei:
+            mg.instagram_profile("1")
+        assert token not in str(ei.value) and token not in "".join(traceback.format_exception(ei.value))
+
+
+def test_unexpected_bug_fails_the_step_instead_of_crashing(app):
+    def bug():
+        raise ValueError("boom")
+    assert run_steps(app.store, app.log, "x", [("bug", bug)]) == "failed"
+    assert app.store.step("x", "bug")["status"] == "failed"
+
+
+def test_lease_blocks_live_holder_and_takes_over_dead_one(app):
+    import socket
+    from igops.store import new_holder
+    assert app.store.acquire("L", new_holder())
+    assert not app.store.acquire("L", new_holder())
+    assert app.store.acquire("L2", f"{socket.gethostname()}:999999:dead0000")
+    assert app.store.acquire("L2", new_holder())
+
+
+def test_vault_key_is_not_stored_in_the_state_folder(app):
+    assert not any(p.suffix == ".key" for p in app.state_dir.rglob("*"))
+
+
+def test_secret_scan_also_reads_the_database(app):
+    drive_to_signup(app)
+    pw = app.vault.get(app.store.account(app.cfg.brand_key)["vault_refs"]["password"])
+    app.store.db.execute("UPDATE tasks SET instructions=? WHERE id=1", (f"leaked {pw}",))
+    app.store.db.execute("PRAGMA wal_checkpoint(FULL)")
+    assert reports.secret_scan(app)["leaks"]
+
+
+def test_kill_minus_nine_mid_run_resumes_immediately(tmp_path):
+    """A real separate process is killed with os._exit right after a step commits."""
+    import os, subprocess, sys, textwrap
+    script = textwrap.dedent(f"""
+        from igops.app import build
+        from igops import provision
+        app = build({str(CFG)!r}, {str(tmp_path)!r}, echo=False)
+        b = app.cfg.brand_key
+        provision.run(app)
+        for key, ev in (("handle:", {{"handle": app.store.account(b)["handle_candidates"][0]}}),
+                        ("email:", {{"alias": "instagram@" + app.cfg.company_domain}}),
+                        ("phone:", {{"phone": app.cfg.company_phones[0]}})):
+            t = next(t for t in app.tasks.open_tasks() if t["key"].startswith(key))
+            app.tasks.complete(t["id"], ev, by="t")
+            provision.run(app)
+    """)
+    env = {**os.environ, "IGOPS_KILL_AFTER_STEP": "credentials", "PYTHONPATH": str(CFG.parent.parent)}
+    p = subprocess.run([sys.executable, "-c", script], env=env, cwd=CFG.parent.parent, capture_output=True, text=True)
+    assert p.returncode == 137, p.stderr[-500:]                     # it really died mid-run
+    app = build(CFG, tmp_path, echo=False)
+    pw_ref = app.store.account(app.cfg.brand_key)["vault_refs"]["password"]
+    version = app.vault.metadata(pw_ref)["version"]
+    assert provision.run(app) == "waiting_human"                    # lease of the dead process taken over
+    assert app.store.step(app.cfg.brand_key, "credentials")["status"] == "done"
+    assert app.vault.metadata(pw_ref)["version"] == version          # password not regenerated
+    assert sum(t["key"].startswith("signup:") for t in app.tasks.all()) == 1
+
+
+def test_offboarding_rerun_is_idempotent(tmp_path):
+    import contextlib, io
+    from igops import demo
+    with contextlib.redirect_stdout(io.StringIO()):
+        demo.run(CFG, str(tmp_path / "d"))
+    app = build(CFG, tmp_path / "d", echo=False)
+    ref_ = app.store.account(app.cfg.brand_key)["vault_refs"]["password"]
+    v0, n0 = app.vault.metadata(ref_)["version"], len(app.tasks.all())
+    for _ in range(3):
+        rep = offboard.run(app, next(p.email for p in app.cfg.people if p.test_member))
+    assert rep["summary"] == {"completed": 4, "pending": 0, "blocked": 0}
+    assert app.vault.metadata(ref_)["version"] == v0 and len(app.tasks.all()) == n0

@@ -1,6 +1,6 @@
 {
   "person": "owner.b@monsoonthreads.example",
-  "ran_at": "2026-10-20T12:52:19+00:00",
+  "ran_at": "2026-10-20T13:03:51+00:00",
   "mode": "simulation",
   "summary": {
     "completed": 0,
@@ -14,14 +14,14 @@
       "detail": "task 16 with owner.a@monsoonthreads.example"
     },
     {
-      "action": "rotate password for @monsoon.threads",
-      "status": "pending",
-      "detail": "new password staged in vault; task 17"
-    },
-    {
       "action": "replace backup codes for @monsoon.threads",
       "status": "pending",
-      "detail": "old set marked exposed; task 18"
+      "detail": "old set marked exposed; task 17"
+    },
+    {
+      "action": "rotate password for @monsoon.threads",
+      "status": "pending",
+      "detail": "new password staged in vault; task 18"
     },
     {
       "action": "revoke vault access",

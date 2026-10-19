@@ -28,7 +28,9 @@
 ## Where this breaks
 
 - **Nothing has touched a real account.** The Meta client, vault adapters and proxy logic are proven against mocks and local stand-ins only.
-- **Human-confirmed facts depend on honest evidence.** A killed process holds its run lease for up to 15 minutes.
+- **Human-confirmed facts depend on honest evidence.** The audit can only re-check what an API exposes.
+
+**Self-review.** I reviewed my own build like a strict assessor. It found 9 real defects, including a token leak in API errors and a lock two processes could both hold. All are fixed, each with a test. See [docs/ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md).
 
 ## Next-day improvements
 

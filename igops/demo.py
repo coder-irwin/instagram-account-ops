@@ -79,7 +79,6 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         app.log.write("run.crashed", msg=f"{exc} (step two_factor left as 'running')")
     finally:
         provision.steps = original
-    app.store.release(f"provision:{b}", "cli")   # a real crash leaves the lease to expire; released here for speed
     provision.run(app)                           # resumes at two_factor; earlier steps are skipped
     signup_tasks_after = sum(1 for t in app.tasks.all() if t["key"].startswith("signup:"))
     print(f"signup tasks before crash: {signup_tasks_before}, after resume: {signup_tasks_after} (no duplicate account)")

@@ -1,6 +1,6 @@
 {
   "person": "owner.b@monsoonthreads.example",
-  "ran_at": "2026-10-20T12:52:19+00:00",
+  "ran_at": "2026-10-20T13:03:51+00:00",
   "mode": "simulation",
   "summary": {
     "completed": 4,
@@ -14,14 +14,14 @@
       "detail": "human-confirmed"
     },
     {
-      "action": "rotate password for @monsoon.threads",
-      "status": "completed",
-      "detail": "new password live on Instagram (human-confirmed)"
-    },
-    {
       "action": "replace backup codes for @monsoon.threads",
       "status": "completed",
       "detail": "new codes stored; the exposed set was revoked on Instagram"
+    },
+    {
+      "action": "rotate password for @monsoon.threads",
+      "status": "completed",
+      "detail": "new password live on Instagram (human-confirmed)"
     },
     {
       "action": "revoke vault access",

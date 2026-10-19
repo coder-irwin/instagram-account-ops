@@ -9,12 +9,13 @@ and may raise TransientError (retried with backoff, bounded) or anything else (s
 """
 from __future__ import annotations
 
+import os
 import random
 import time
 from dataclasses import dataclass
 from typing import Callable
 
-from .core import RunLog
+from .core import RunLog, redact
 from .providers.meta import TransientError
 from .store import Store
 
@@ -35,8 +36,8 @@ class Blocked:
     reason: str
 
 
-class Interrupted(Exception):
-    """Raised by the demo to simulate a crash or a killed process mid-run."""
+class Interrupted(BaseException):
+    """Simulates the process being killed mid-run. BaseException, so no handler swallows it."""
 
 
 def run_steps(store: Store, log: RunLog, brand: str, steps: list[tuple[str, Callable[[], object]]],
@@ -60,8 +61,15 @@ def run_steps(store: Store, log: RunLog, brand: str, steps: list[tuple[str, Call
                           msg=f"{name}: transient error ({exc}), retry {attempt}/{max_retries - 1} in {delay:.1f}s")
                 sleep(delay)
                 continue
+            except Exception as exc:   # noqa: BLE001 - a bug in one step must not crash the run
+                msg = redact(f"{type(exc).__name__}: {exc}")[:300]
+                store.set_step(brand, name, "failed", msg)
+                log.write("step.failed", step=name, msg=f"{name}: unexpected error, step marked failed ({msg})")
+                return "failed"
             if isinstance(result, Done):
                 store.set_step(brand, name, "done", result.detail)
+                if os.environ.get("IGOPS_KILL_AFTER_STEP") == name:   # test hook: simulate kill -9
+                    os._exit(137)
                 store.set_blocker(brand, name, None)
                 log.write("step.done", step=name, msg=f"{name}: {result.detail}")
                 break
