@@ -213,5 +213,8 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         print("wrote", f)
     scan = reports.secret_scan(app)
     print("secret scan:", scan)
+    print(f"\nDone. Reports are in {state}/reports/. Inspect the result with:\n"
+          f"  uv run python -m igops --state {state} status\n"
+          f"  uv run python -m igops --state {state} vault verify")
     return {"outcome": outcome, "audit": audit_rep, "offboarding": final, "proxy": proxy_status, "scan": scan,
             "signup_tasks": signup_tasks_after}

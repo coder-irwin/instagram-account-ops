@@ -77,6 +77,10 @@ def main(argv=None) -> int:
 
     if args.cmd == "status":
         acc = app.store.account(app.cfg.brand_key)
+        if not acc:
+            print(f"No account in '{args.state}' yet. Run `igops provision` to start, or inspect the demo "
+                  "with `igops --state state/demo status`.")
+            return 0
         print(json.dumps({"account": {k: acc[k] for k in ("brand", "handle", "status", "two_factor_method",
                                                           "last_verified_at", "blockers")} if acc else None,
                           "steps": [(s["name"], s["status"]) for s in app.store.steps(app.cfg.brand_key)]}, indent=2))
