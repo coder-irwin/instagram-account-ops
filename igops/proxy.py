@@ -65,6 +65,9 @@ class ProxyPool:
         self.proxies = [ProxyState(x["name"], x["url_ref"]) for x in proxies]
         self.sessions: dict[str, Session] = {}
         self.on_challenge = None   # callback(account, detail) -> opens a human task
+        # callback(account) -> True while a security-review task is open. The pause lives in the
+        # task store, so it survives restarts and is lifted only by a person closing that task.
+        self.paused_check = None
 
     # ---------------------------------------------------------------- plumbing
     def _client(self, proxy: ProxyState) -> httpx.Client:
@@ -114,9 +117,13 @@ class ProxyPool:
     # ---------------------------------------------------------------- sessions
     def open_session(self, account: str, avoid: str | None = None) -> Session:
         existing = self.sessions.get(account)
-        if existing and existing.paused:
+        persisted = bool(self.paused_check and self.paused_check(account))
+        if persisted or (existing and existing.paused and not self.paused_check):
             # A challenge pauses the account, not just the connection. Only a person clears it.
             raise SecurityChallenge(f"{account} is paused for human review; automation will not reconnect")
+        if existing and existing.paused:
+            self.end_session(account, "security review closed by a person; a fresh session may start")
+            existing = None
         if existing:
             return existing                        # preserve: an active session keeps its proxy
         try:

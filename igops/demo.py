@@ -171,6 +171,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
                                       "Do not retry, rotate proxies or bypass it.",
                          owner=cfg.owner, escalate_to=cfg.escalate_to, due_in_hours=2)
     pool.on_challenge = on_challenge
+    pool.paused_check = lambda account: bool((t := app.tasks.get(f"challenge:{account}")) and t["status"] == "open")
     pool.check_all()
 
     def carried_by(r):
@@ -195,6 +196,16 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         print("ERROR: a paused account was allowed to reconnect via", r["proxy"])
     except SecurityChallenge as exc:
         print("further requests refused until a human clears it:", exc)
+    restarted = ProxyPool(cfg.proxies, app.vault, app.log, pool.p)       # a fresh process: no memory of the pause
+    restarted.paused_check = pool.paused_check
+    try:
+        restarted.request("challenge-session")
+        print("ERROR: the pause was forgotten after a restart")
+    except SecurityChallenge:
+        print("after a restart the account is still paused: the pause lives in the open security task")
+    t = app.tasks.get("challenge:challenge-session")
+    app.tasks.complete(t["id"], {"resolved": "yes"}, by=f"{cfg.owner} (simulated)")
+    print("a person closed the security task; next request carried by:", carried_by(restarted.request("challenge-session")))
     proxy_status = pool.status()
     if ep:
         ep.stop()

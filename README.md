@@ -8,7 +8,7 @@ You need Python 3.11 or newer. The project uses [uv](https://docs.astral.sh/uv/)
 
 ```bash
 uv sync --extra dev
-uv run pytest -q                                # 27 tests
+uv run pytest -q                                # 28 tests
 uv run python -m igops demo                     # the full walkthrough, about 10 seconds
 uv run python -m igops --state state/demo status  # look at what the demo produced
 ```
@@ -49,6 +49,52 @@ uv run python -m igops provision  # the live run: stops at each human step, resu
 
 `setup` supports a local encrypted vault, HashiCorp Vault and 1Password. A test rehearses this path end to end against fake versions of GAJAN's services, using the real Meta client and real proxy checks.
 
+## Deliverables: where each one is
+
+| The brief asks for | File |
+|---|---|
+| Redacted run log | [deliverables/run_log_redacted.jsonl](deliverables/run_log_redacted.jsonl). Every line was redacted before it was written. |
+| Account register | [deliverables/account_register.md](deliverables/account_register.md), with a [JSON](deliverables/account_register.json) copy |
+| Audit report, one demonstrated run | [deliverables/audit_report_three_months_later.md](deliverables/audit_report_three_months_later.md) is the weekly run that flags a non-company recovery email and stale access. The other `audit_report_*` files are the same audit at earlier points. |
+| Offboarding report | [deliverables/offboarding_report.md](deliverables/offboarding_report.md) for Owner B (leaving): 4 completed. [The first pass](deliverables/offboarding_report_first_pass.md) shows all 4 pending. |
+| Human task list | [deliverables/tasks.md](deliverables/tasks.md), with owner, deadline, reminders and escalation for every task |
+| One-page decision log | [DECISION_LOG.md](DECISION_LOG.md) |
+| Screen recording | Linked in the submission email |
+
+## The human steps
+
+The code never does these. It creates each one as a task with an owner, a deadline, reminders and escalation, waits, then resumes:
+
+| Step | Owner does | Closes the task with |
+|---|---|---|
+| Handle | Checks candidates one at a time on instagram.com, and picks the first available | `done ID handle=<chosen>` |
+| Email alias | Creates `instagram@<company domain>`, routed to the owner | `done ID alias=<address>` |
+| Phone | Reserves a company-controlled number. A non-company number is refused. | `done ID phone=<number>` |
+| Signup | Searches for the handle first, so never a second account. Signs up in the official app and completes verification. | `done ID handle=<h> created=new` |
+| Two-factor | Turns on an authenticator app. Stores the backup codes with `vault put ... --prompt`. | `done ID method=authenticator_app` |
+| Business link | Switches to a business account and adds it to the Meta business | `done ID ig_user_id=<id>` |
+| Profile | Sets the name, bio (150 characters max), link, category and image from the brand kit | `done ID done=yes` |
+| Roles | Grants each person only their listed permission | `done ID granted=yes` |
+| Offboarding | Removes the leaver's role, changes the password, replaces the backup codes | `done ID ...=yes` |
+| Security challenge | Resolves it by hand in the official app. Automation stays paused until then. | `done ID resolved=yes` |
+
+Task evidence can never contain a secret. `done` refuses fields named like password, code, secret or token.
+
+## Proxy and session policy: when to rotate, when to preserve
+
+- **Preserve the connection for the whole life of an active session.** Each session is pinned to one proxy and reuses one keep-alive connection. Changing IP inside a logged-in session looks like account takeover to a platform, and triggers security checks.
+- **Retry on the same proxy.** Timeouts and connection errors get a bounded number of retries with backoff, all on the proxy the session already uses.
+- **Rotate only between sessions:**
+  - On schedule, when a session reaches its age or request budget.
+  - On failover, when a proxy fails health checks or is unreachable after its retries. The broken session ends and a new one starts on a healthy proxy.
+- **Never rotate to get around enforcement.** A security challenge, block or rate limit (HTTP 401, 403 or 429, or challenge wording) pauses the account. It opens a human task, and every further request is refused, including failover, until a person clears it.
+- **Redact everything.** Proxy URLs and credentials live only in the vault. Logs name proxies, such as `proxy-a`, never their address or password.
+- **Instagram itself is never reached through a proxy.** Meta's official API needs none. Proxies are demonstrated only against the neutral endpoint.
+
+## Scheduling the weekly audit
+
+`uv run python -m igops schedule` prints the cron line, which runs every Monday at 09:00. Add it with `crontab -e`. Run `sweep` every 15 minutes the same way, for reminders and escalation. The demo runs the audit directly, so you can see the results without waiting a week.
+
 ## What is real and what is simulated
 
 | Part | Status |
@@ -66,7 +112,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --extra dev
-uv run pytest -q                     # 27 behaviour tests, including a real kill -9 recovery test
+uv run pytest -q                     # 28 behaviour tests, including a real kill -9 recovery test
 uv run python -m igops demo          # full simulated walkthrough, about 10 seconds
 ```
 

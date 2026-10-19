@@ -6,7 +6,7 @@ After building the prototype I reviewed it as a strict assessor would, then veri
 
 | What | Result |
 |---|---|
-| Behaviour tests | 27, all passing, with no network needed |
+| Behaviour tests | 28, all passing, with no network needed |
 | Line coverage | 93 percent of lines, measured with coverage.py |
 | Real process kill | A separate process is killed with `os._exit(137)` right after a step commits. The restart resumes immediately, keeps the same password version, and still has exactly one signup task. |
 | Concurrent runners | Two processes provision the same brand at the same moment, 5 rounds each. Result: 0 duplicate tasks. |
@@ -30,6 +30,7 @@ After building the prototype I reviewed it as a strict assessor would, then veri
 | 10 | Rejecting secret evidence in `done` printed a raw Python traceback | Confusing for an operator | A one-line refusal and exit code 2 | Checked by hand |
 | 11 | After rotation, the staged copy of the new password stayed in the vault | Needless duplicate secret | The staged copy is deleted once promoted | `test_offboarding_rerun_is_idempotent` |
 | 12 | "Last verified never" was labelled integration-verified, and a person's confirmation was stated as fact | Overclaimed evidence (completion evidence, 10 points) | "never" is labelled unverified, and human-confirmed facts are labelled so | Checked by hand in the reports |
+| 13 | The challenge pause lived only in memory, so a restart forgot it, and closing the task did nothing | Automation could resume after a challenge without a person (boundaries, 15 points) | The pause is the open security-review task, checked before every connection. It survives restarts and is lifted only when a person closes the task. | `test_challenge_pause_survives_restart_and_is_lifted_only_by_a_person` |
 
 ## What is still unproven
 

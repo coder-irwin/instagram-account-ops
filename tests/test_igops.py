@@ -431,3 +431,20 @@ def test_offboarding_rerun_is_idempotent(tmp_path):
     assert rep["summary"] == {"completed": 4, "pending": 0, "blocked": 0}
     assert app.vault.metadata(ref_)["version"] == v0 and len(app.tasks.all()) == n0
     assert not app.vault.exists(ref_ + ".next")          # staged copy deleted after promotion
+
+
+def test_challenge_pause_survives_restart_and_is_lifted_only_by_a_person(pool, app):
+    p, _ = pool
+    p.on_challenge = lambda acc, d: app.tasks.ensure(f"challenge:{acc}", brand="b", kind="security_review",
+                                                     title="review", instructions="x", owner="o", escalate_to="e",
+                                                     due_in_hours=2)
+    check = lambda acc: bool((t := app.tasks.get(f"challenge:{acc}")) and t["status"] == "open")
+    p.paused_check = check
+    with pytest.raises(SecurityChallenge):
+        p.request("s", "challenge")
+    fresh = ProxyPool(app.cfg.proxies, app.vault, app.log, p.p)      # simulated restart
+    fresh.paused_check = check
+    with pytest.raises(SecurityChallenge):
+        fresh.request("s")
+    app.tasks.complete(app.tasks.get("challenge:s")["id"], {"resolved": "yes"}, by="person")
+    assert fresh.request("s")["status"] == 200
