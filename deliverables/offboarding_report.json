@@ -1,6 +1,6 @@
 {
-  "person": "temp.tester@test-brand.example",
-  "ran_at": "2026-10-18T12:28:48+00:00",
+  "person": "owner.b@monsoonthreads.example",
+  "ran_at": "2026-10-20T12:52:19+00:00",
   "mode": "simulation",
   "summary": {
     "completed": 4,
@@ -9,17 +9,17 @@
   },
   "actions": [
     {
-      "action": "remove insights_viewer on northwind-test/business_suite",
+      "action": "remove insights_viewer on monsoon-threads/business_suite",
       "status": "completed",
       "detail": "human-confirmed"
     },
     {
-      "action": "rotate password for @northwind.test.co",
+      "action": "rotate password for @monsoon.threads",
       "status": "completed",
       "detail": "new password live on Instagram (human-confirmed)"
     },
     {
-      "action": "replace backup codes for @northwind.test.co",
+      "action": "replace backup codes for @monsoon.threads",
       "status": "completed",
       "detail": "new codes stored; the exposed set was revoked on Instagram"
     },

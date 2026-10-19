@@ -8,6 +8,7 @@
   uv run python -m igops sweep                     send reminders, escalate overdue tasks
   uv run python -m igops vault put REF --prompt    store a secret without echoing it
   uv run python -m igops vault list                references and metadata only, never values
+  uv run python -m igops vault verify [REF]        decrypt and show a fingerprint, never the value
   uv run python -m igops audit                     run the security audit now
   uv run python -m igops schedule                  print the weekly cron line
   uv run python -m igops offboard EMAIL            offboard a departing person
@@ -41,7 +42,7 @@ def main(argv=None) -> int:
     d = sub.add_parser("done"); d.add_argument("id", type=int); d.add_argument("evidence", nargs="*")
     d.add_argument("--by", default=None)
     sub.add_parser("sweep")
-    v = sub.add_parser("vault"); v.add_argument("action", choices=["put", "list"]); v.add_argument("ref", nargs="?")
+    v = sub.add_parser("vault"); v.add_argument("action", choices=["put", "list", "verify"]); v.add_argument("ref", nargs="?")
     v.add_argument("--prompt", action="store_true", help="read the value with hidden input")
     a = sub.add_parser("audit"); a.add_argument("--scheduled", action="store_true")
     sub.add_parser("schedule")
@@ -70,7 +71,8 @@ def main(argv=None) -> int:
         for r in rows:
             print(f"{'OK  ' if r['ok'] else 'TODO'}  {r['check']:<34} {r['detail']}" + (f"\n      fix: {r['fix']}" if r['fix'] else ""))
         todo = sum(not r["ok"] for r in rows)
-        print(f"\n{'Ready to go live.' if not todo else f'{todo} item(s) left before going live.'}")
+        ready = "Simulation ready to run." if app.cfg.simulation else "Ready to go live."
+        print(f"\n{ready if not todo else f'{todo} item(s) left.'}")
         return 0 if not todo else 1
 
     if args.cmd == "status":
@@ -93,6 +95,11 @@ def main(argv=None) -> int:
         if args.action == "list":
             for r in app.vault.refs():
                 print(r, json.dumps(app.vault.metadata(r)))
+        elif args.action == "verify":
+            from .vault import fingerprint
+            for r in ([args.ref] if args.ref else app.vault.refs()):
+                v = app.vault.get(r)       # decrypts; proves the secret is readable without showing it
+                print(f"{r}  readable  v{app.vault.metadata(r).get('version')}  {fingerprint(v)}  {len(v)} chars")
         else:
             if not args.ref or not args.prompt:
                 print("usage: vault put vault://... --prompt   (values are never accepted as arguments)")

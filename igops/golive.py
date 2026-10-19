@@ -14,7 +14,7 @@ from pathlib import Path
 from .config import load
 from .vault import open_vault, ref
 
-PLACEHOLDER_MARKERS = (".example", "northwind", "CHANGE")
+PLACEHOLDER_MARKERS = (".example", "SIMULATED", "monsoon", "CHANGE")
 
 FIELDS = [  # (key, question, section)
     ("brand.key", "Short brand key, lowercase, no spaces", "brand"),
@@ -131,6 +131,20 @@ def doctor(app) -> list[dict]:
     def check(name, ok, detail, fix=""):
         rows.append({"check": name, "ok": bool(ok), "detail": detail, "fix": "" if ok else fix})
 
+    if cfg.simulation:
+        # Simulation is the agreed scope (GAJAN, 19 October): check what the simulation needs.
+        check("mode", True, "simulation, as agreed with GAJAN: sample brand, mocked Meta API, local vault")
+        check("vault readable", True, f"{cfg.vault.get('backend', 'local')} backend, {len(getattr(v, 'refs', lambda: [])())} secrets")
+        check("profile image file", Path(cfg.profile_image).is_file(), cfg.profile_image, "add the brand-kit image")
+        check("bio length", len(cfg.bio) <= 150, f"{len(cfg.bio)}/150 characters", "shorten the bio")
+        try:
+            import httpx
+            ok = httpx.get(cfg.proxy_policy.get("neutral_endpoint", ""), timeout=5).status_code == 200
+        except Exception:   # noqa: BLE001
+            ok = False
+        check("public neutral endpoint", ok, cfg.proxy_policy.get("neutral_endpoint", ""),
+              "offline is fine: the demo falls back to a local endpoint")
+        return rows
     raw_text = Path(cfg.path).read_text() if Path(cfg.path).exists() else ""
     placeholders = [m for m in PLACEHOLDER_MARKERS if m in raw_text]
     check("mode is live", not cfg.simulation, f"mode = {cfg.mode}", "run `igops setup`")

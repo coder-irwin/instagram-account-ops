@@ -4,20 +4,29 @@ A prototype that provisions, secures, audits and offboards **one company-authori
 
 **Read [DECISION_LOG.md](DECISION_LOG.md) first.** The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
 
-## Access status at submission
+## Environment and assumptions
 
-The brief says GAJAN provides the test environment: a brand kit, test email and phone, a vault, a Meta business and proxies. None of these were included with the task. I asked for them by email on 16 October at 16:48, and on WhatsApp on 16 and 17 October. No access had arrived by the time I submitted.
+GAJAN asked for the whole environment to be simulated, in an email from Gagandeep Thind on 19 October 2026: no real Instagram account, no real company systems and no live proxies. Here is what stands in for each part:
 
-The brief asks to "record any missing access or platform blocker, and show how work resumes once it is cleared", so this submission does that:
+| Brief asks for | What this submission uses |
+|---|---|
+| Throwaway test brand and brand kit | **Monsoon Threads**, an invented apparel brand. See [brand_kit/README.md](brand_kit/README.md). |
+| Test company email and phone | `monsoonthreads.example`, a reserved domain that can't be real, and `+1 555 0142 001`, a reserved fictional number |
+| Vault | A local encrypted file vault. The demo stores and reads the password, backup codes and proxy credentials, showing only versions and fingerprints. HashiCorp Vault and 1Password adapters exist for a real deployment. |
+| Human task owners | **Owner A** owns the tasks, **Ops Lead** gets escalations, and **Editor C** is a normal team member |
+| Departing team member | **Owner B (leaving)**, holding a designated temporary role, `insights_viewer`. The offboarding run targets them. |
+| Meta business and Instagram | A clearly labelled mock of the official Graph API. Steps with no supported API are human tasks. |
+| Approved proxies | Two local authenticated test proxies started by the demo. No live proxies. |
+| Neutral endpoint | **http://httpbin.org/headers**, which echoes which proxy carried each request. **/status/403** stands in for a security challenge. If httpbin is unreachable, the demo uses a local endpoint and says so. |
 
-- **Everything that doesn't need GAJAN's access is built and tested.** The demo walks the whole workflow, with the missing services replaced by clearly labelled stand-ins.
-- **Live mode stops honestly.** `igops doctor` lists the 6 missing items, each with its fix. See [deliverables/doctor_before_access.txt](deliverables/doctor_before_access.txt).
-- **Going live is three commands, below.** A test rehearses that exact path against fake versions of GAJAN's services.
-- **No real Instagram account was created.** Making one with my own email and phone would not be "company-authorised", and would fail the task's own rule that recovery details be company-controlled.
+**Other assumptions:**
+- The account owner does every Instagram action by hand: signup, verification, two-factor, the business switch, profile edits and Business Suite roles.
+- Simulated human completions in the demo are labelled "(simulated)".
+- Every "integration-verified" result that came from the mock is labelled "(simulated)".
 
-## Going live in about ten minutes
+## If a real environment is provided later
 
-Every missing piece of GAJAN's test environment currently runs on a clearly labelled stand-in. Once the access arrives, three commands switch to the real thing:
+Every stand-in can be replaced with real access in about ten minutes:
 
 ```bash
 uv run python -m igops setup      # real values; secrets typed hidden, straight into the vault
@@ -79,6 +88,7 @@ uv run python -m igops done 7 ig_user_id=1784...      # close a task with non-se
 uv run python -m igops sweep                          # reminders and escalation (cron every 15 min)
 uv run python -m igops vault put vault://... --prompt # store a secret with hidden input
 uv run python -m igops vault list                     # references and metadata, never values
+uv run python -m igops vault verify                   # decrypt each secret, show only a fingerprint
 uv run python -m igops audit                          # run the audit now
 uv run python -m igops schedule                       # prints the weekly cron line
 uv run python -m igops offboard person@company        # offboard someone, rerun to continue

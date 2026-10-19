@@ -1,12 +1,12 @@
 {
-  "audit_id": "audit-20261018T122848",
+  "audit_id": "audit-20261020T125219",
   "resolved_followups": [],
-  "ran_at": "2026-10-18T12:28:48+00:00",
+  "ran_at": "2026-10-20T12:52:19+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "backup_codes_missing",
       "severity": "high",
       "detail": "no backup codes in the vault",
@@ -14,7 +14,7 @@
       "task": 6
     },
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "two_factor_off",
       "severity": "high",
       "detail": "two-factor is not recorded as enabled",
@@ -22,7 +22,7 @@
       "task": 7
     },
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "setup_incomplete",
       "severity": "medium",
       "detail": "setup incomplete (status created)",
@@ -30,7 +30,7 @@
       "task": 8
     },
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "verification_stale",
       "severity": "low",
       "detail": "last verified never",

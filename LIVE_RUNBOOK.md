@@ -1,12 +1,12 @@
-# Live runbook: the real test account
+# Live runbook: if a real environment is provided later
 
-This takes the prototype from simulation to the real throwaway brand on real Instagram. Each step says who does it. **Never paste a password, backup code, token or proxy URL into chat, email, a task or a terminal argument.** Use `vault put --prompt`.
+**Not needed for this submission.** GAJAN asked for a fully simulated environment on 19 October. This runbook shows how the same code would run against a real throwaway brand on real Instagram. Each step says who does it. **Never paste a password, backup code, token or proxy URL into chat, email, a task or a terminal argument.** Use `vault put --prompt`.
 
-## 0. Access needed from GAJAN (blockers until received)
+## 0. Access a real run would need
 
 | Needed | Used for | Where it goes |
 |---|---|---|
-| Test brand kit: name, logo, bio, website, category | Profile | `config/brand.toml`, `assets/` |
+| Test brand kit: name, logo, bio, website, category | Profile | `config/brand.toml`, `brand_kit/` |
 | Test company email domain and mailbox access | Recovery email alias | `config/brand.toml` |
 | Test company phone number | Recovery phone and verification | `config/brand.toml` under `company_contacts.phones` |
 | Vault access | All secrets | Adapter in `igops/vault.py`, or the local vault meanwhile |
@@ -53,7 +53,7 @@ The last step reads the profile back through the Meta API and marks the account 
 Use the **temporary tester** in the config, whose only role is `insights_viewer`.
 
 1. Grant them that role during provisioning.
-2. Run `offboard temp.tester@<domain>`.
+2. Run `offboard owner.b@<domain>` (Owner B, leaving).
 3. Do the three tasks: remove the role, change the password to the staged one in the vault, and get new backup codes and store them.
 4. Run `offboard` again. The report then shows every action completed.
 

@@ -1,12 +1,12 @@
 {
-  "audit_id": "audit-20261018T122848",
+  "audit_id": "audit-20261020T125219",
   "resolved_followups": [],
-  "ran_at": "2026-10-18T12:28:48+00:00",
+  "ran_at": "2026-10-20T12:52:19+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "backup_codes_exposed",
       "severity": "high",
       "detail": "backup codes were exposed and not yet replaced",
@@ -14,10 +14,10 @@
       "task": 19
     },
     {
-      "brand": "northwind-test",
-      "check": "removal_pending:temp.tester@test-brand.example",
+      "brand": "monsoon-threads",
+      "check": "removal_pending:owner.b@monsoonthreads.example",
       "severity": "high",
-      "detail": "role removal for temp.tester@test-brand.example not confirmed yet",
+      "detail": "role removal for owner.b@monsoonthreads.example not confirmed yet",
       "verification": "unverified",
       "task": 20
     }

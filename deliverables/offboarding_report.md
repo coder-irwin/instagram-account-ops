@@ -1,10 +1,10 @@
-# Offboarding report: temp.tester@test-brand.example
+# Offboarding report: owner.b@monsoonthreads.example
 
-Ran 2026-10-18T12:28:48+00:00 in **simulation** mode. 4 completed, 0 pending, 0 blocked.
+Ran 2026-10-20T12:52:19+00:00 in **simulation** mode. 4 completed, 0 pending, 0 blocked.
 
 | Action | Status | Detail |
 |---|---|---|
-| remove insights_viewer on northwind-test/business_suite | completed | human-confirmed |
-| rotate password for @northwind.test.co | completed | new password live on Instagram (human-confirmed) |
-| replace backup codes for @northwind.test.co | completed | new codes stored; the exposed set was revoked on Instagram |
+| remove insights_viewer on monsoon-threads/business_suite | completed | human-confirmed |
+| rotate password for @monsoon.threads | completed | new password live on Instagram (human-confirmed) |
+| replace backup codes for @monsoon.threads | completed | new codes stored; the exposed set was revoked on Instagram |
 | revoke vault access | completed | all secrets they could read are rotated |

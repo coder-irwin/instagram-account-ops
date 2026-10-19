@@ -1,26 +1,24 @@
-# Test brand configuration. Values marked CHANGE come from GAJAN's test environment.
+# Sample brand configuration. GAJAN asked for a fully simulated environment
+# (email of 19 October 2026); every value here is invented. See brand_kit/README.md.
 # This file holds no secrets: only vault references (vault://...) and non-secret facts.
 
 mode = "simulation"            # "simulation" (no real Instagram calls) or "live"
 
 [brand]
-key = "northwind-test"         # CHANGE: GAJAN's throwaway test brand
-name = "Northwind Test Co"     # CHANGE
-company_domain = "test-brand.example"        # CHANGE: test company email domain
-website = "https://test-brand.example"       # CHANGE
-category = "Shopping & retail"               # CHANGE
-bio = "Test brand account operated by GAJAN Group for an internal operations prototype."
-profile_image = "assets/brand_logo.png"      # CHANGE: from the brand kit
+key = "monsoon-threads"
+name = "Monsoon Threads"
+company_domain = "monsoonthreads.example"
+website = "https://monsoonthreads.example"
+category = "Clothing (Brand)"
+bio = "Handloom cotton for warm days and wet ones. Made in small batches with weavers we know by name. New drops every month."
+profile_image = "brand_kit/logo.png"
 
 [vault]
-backend = "local"              # CHANGE: "local", "hashicorp" or "1password"
-# address = "https://vault.example:8200"   # hashicorp: token from the VAULT_TOKEN env var
-# mount = "secret"
-# op_vault = "GAJAN Test"                  # 1password: token from OP_SERVICE_ACCOUNT_TOKEN
+backend = "local"              # encrypted local file; "hashicorp" and "1password" adapters also exist
 
 [ops]
-owner = "ops.owner@test-brand.example"           # CHANGE: owner of human tasks
-escalate_to = "ops.lead@test-brand.example"      # CHANGE: escalation contact
+owner = "owner.a@monsoonthreads.example"         # Owner A: owns human tasks
+escalate_to = "ops.lead@monsoonthreads.example"  # Ops Lead: receives escalations
 signup_due_hours = 24
 task_due_hours = 24
 stale_access_days = 90
@@ -28,40 +26,43 @@ stale_verification_days = 7
 
 [company_contacts]
 # Company-controlled recovery details. Anything else is flagged by the audit.
-phones = ["+1 555 0100 200"]                     # CHANGE: test company phone
+phones = ["+1 555 0142 001"]
 
 [meta]
-business_id = ""                                  # CHANGE: GAJAN's separate Meta business id
-ig_user_id = ""                                   # filled once the business account is linked
-token_ref = "vault://northwind-test/meta/system_user_token"
+business_id = "SIMULATED-BUSINESS-001"
+ig_user_id = ""
+token_ref = "vault://monsoon-threads/meta/system_user_token"
 
-# People and the least-privilege role each needs. Surfaces: instagram, business_suite.
+# People and the least-privilege role each needs.
 [[people]]
-email = "ops.owner@test-brand.example"
-name = "Ops Owner"
+email = "owner.a@monsoonthreads.example"
+name = "Owner A"
 roles = { business_suite = "admin" }
 
 [[people]]
-email = "content.editor@test-brand.example"
-name = "Content Editor"
+email = "editor.c@monsoonthreads.example"
+name = "Editor C"
 roles = { business_suite = "content_editor" }
 
 [[people]]
-email = "temp.tester@test-brand.example"          # the departing member for the offboarding test
-name = "Temporary Tester"
+email = "owner.b@monsoonthreads.example"         # Owner B (leaving): the offboarding run targets them
+name = "Owner B (leaving)"
 test_member = true
 roles = { business_suite = "insights_viewer" }    # designated temporary, least-privilege role
-vault_access = ["password", "backup_codes"]       # what this person could see, for rotation
+vault_access = ["password", "backup_codes"]       # what they could read, so both get rotated
 
 [[proxies]]
 name = "proxy-a"
-url_ref = "vault://northwind-test/proxy/a"        # value: http://user:pass@host:port
+url_ref = "vault://monsoon-threads/proxy/a"       # local test proxy; value http://user:pass@127.0.0.1:port
 [[proxies]]
 name = "proxy-b"
-url_ref = "vault://northwind-test/proxy/b"
+url_ref = "vault://monsoon-threads/proxy/b"
 
 [proxy_policy]
-neutral_endpoint = "http://127.0.0.1:8899/ip"     # CHANGE: GAJAN's neutral test endpoint
+# Public neutral endpoint (httpbin.org echoes request headers, so we can see which proxy carried
+# the request). /status/403 stands in for a security challenge. Falls back to a local endpoint offline.
+neutral_endpoint = "http://httpbin.org/headers"
+challenge_path = "status/403"
 connect_timeout_s = 3
 read_timeout_s = 5
 max_retries = 3

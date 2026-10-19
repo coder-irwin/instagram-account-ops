@@ -2,7 +2,7 @@
 
 **Principle.** Automate the coordination, never the platform. People do every Instagram step without a supported integration. Secrets live only in the vault.
 
-**Access.** GAJAN's test environment was requested on 16 and 17 October but had not arrived by submission. Live mode records the blockers, and `setup`, `doctor` and `provision` resume once it arrives. I did not create my own Instagram account, because it wouldn't be company-authorised.
+**Environment.** As GAJAN asked on 19 October, everything is simulated: an invented brand (Monsoon Threads), placeholder owners (Owner A, and Owner B leaving), a local encrypted vault, local test proxies, httpbin.org as the neutral endpoint, and a labelled mock of Meta's API. Assumptions are in the README.
 
 ## What I built
 
@@ -27,12 +27,12 @@
 
 ## Where this breaks
 
-- **No real account yet.** The Meta API, vault adapters and proxies are tested against fakes and local stand-ins only.
+- **Nothing has touched a real account.** The Meta client, vault adapters and proxy logic are proven against mocks and local stand-ins only.
 - **Human-confirmed facts depend on honest evidence.** A killed process holds its run lease for up to 15 minutes.
 
 ## Next-day improvements
 
-1. Connect the real vault and Meta token, then run and record the live path.
+1. With real access: `setup`, `doctor`, `provision`, and check the Meta and vault adapters against the real services.
 2. Assign and verify roles through the Business Management API.
 
 ## AI tools used

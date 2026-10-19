@@ -133,7 +133,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("6b. Three months later: the weekly audit catches drift and stale access")
     advance(24 * 95)
-    app.store.upsert_account(b, recovery_email="northwind.personal@gmail.com")   # reported by a person (simulated)
+    app.store.upsert_account(b, recovery_email="monsoon.personal@gmail.example")   # reported by a person (simulated)
     app.log.write("drift.reported", msg="owner reports the recovery email was changed to a personal address (simulated)")
     later = audit.run(app)
     reports.audit(app, later, "audit_report_three_months_later")
@@ -142,14 +142,28 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     app.store.upsert_account(b, recovery_email=f"instagram@{cfg.company_domain}")  # fixed by the owner
 
     banner("7. Proxies on a neutral endpoint: health, pinning, rotation, failover, challenge")
-    ep = NeutralEndpoint(port=0)
+    import httpx
+    public = cfg.proxy_policy.get("neutral_endpoint", "")
+    challenge_path = cfg.proxy_policy.get("challenge_path", "status/403")
+    try:
+        online = public.startswith("http") and httpx.get(public, timeout=5).status_code == 200
+    except httpx.HTTPError:
+        online = False
+    ep = None
+    if online:
+        endpoint = public
+        print(f"neutral endpoint: {public} (public). Challenge stand-in: {public.rsplit('/', 1)[0]}/{challenge_path}")
+    else:
+        ep = NeutralEndpoint(port=0)
+        endpoint, challenge_path = f"http://127.0.0.1:{ep.port}/ip", "challenge"
+        print(f"public endpoint unreachable; using the local neutral endpoint {endpoint}")
+    app.log.write("proxy.endpoint", msg=f"neutral endpoint {endpoint} ({'public' if online else 'local fallback'})")
     creds = {n: (f"user-{n}", secrets.token_urlsafe(12)) for n in ("a", "b")}
     px = {n: TestProxy(f"proxy-{n}", *creds[n]) for n in ("a", "b")}
     for n in ("a", "b"):
-        app.vault.put(ref(b, "proxy", n), px[n].url(*creds[n]), meta={"purpose": "test proxy"})
+        app.vault.put(ref(b, "proxy", n), px[n].url(*creds[n]), meta={"purpose": "local test proxy"})
     pool = ProxyPool(cfg.proxies, app.vault, app.log,
-                     {**cfg.proxy_policy, "neutral_endpoint": f"http://127.0.0.1:{ep.port}/ip",
-                      "max_session_requests": 3, "cooldown_s": 300})
+                     {**cfg.proxy_policy, "neutral_endpoint": endpoint, "max_session_requests": 3, "cooldown_s": 300})
 
     def on_challenge(account, detail):
         app.tasks.ensure(f"challenge:{account}", brand=b, kind="security_review",
@@ -159,18 +173,22 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
                          owner=cfg.owner, escalate_to=cfg.escalate_to, due_in_hours=2)
     pool.on_challenge = on_challenge
     pool.check_all()
-    seen = [pool.request("demo-session")["proxy"] for _ in range(3)]
-    print("3 requests in one session all used:", set(seen))
+
+    def carried_by(r):
+        hdrs = r["body"].get("headers", {})
+        return hdrs.get("X-Test-Proxy") or r["body"].get("via") or r["proxy"]
+    seen = [carried_by(pool.request("demo-session")) for _ in range(3)]
+    print("3 requests in one session were carried by (as echoed by the endpoint):", set(seen))
     pool.maybe_rotate("demo-session")
-    print("after the request budget, next request uses:", pool.request("demo-session")["proxy"])
+    print("after the request budget, the next request is carried by:", carried_by(pool.request("demo-session")))
     px["b"].stop()
     try:
         r = pool.request_with_failover("demo-session")
-        print("proxy-b stopped; failover served by:", r["proxy"])
+        print("proxy-b stopped; failover served by:", carried_by(r))
     except ProxyDown as exc:
         print("failover failed:", exc)
     try:
-        pool.request("challenge-session", "challenge")
+        pool.request("challenge-session", challenge_path)
     except SecurityChallenge as exc:
         print("challenge -> paused:", exc)
     try:
@@ -179,7 +197,17 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     except SecurityChallenge as exc:
         print("further requests refused until a human clears it:", exc)
     proxy_status = pool.status()
-    ep.stop(); px["a"].stop()
+    if ep:
+        ep.stop()
+    px["a"].stop()
+
+    banner("7b. The vault: how credentials and backup codes are stored and read")
+    from .vault import fingerprint
+    for r in app.vault.refs():
+        m = app.vault.metadata(r)
+        value = app.vault.get(r)          # a real read: decrypts the value in memory only
+        print(f"  {r:<48} v{m.get('version')}  {fingerprint(value)}  ({len(value)} chars, value never printed)")
+    print("  the database, config and reports store only these vault:// references")
 
     banner("8. Reports and secret scan")
     for f in (reports.register(app), reports.tasks(app), reports.run_log(app)):

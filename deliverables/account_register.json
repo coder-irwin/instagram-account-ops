@@ -1,35 +1,35 @@
 {
-  "generated_at": "2027-01-21T12:28:51+00:00",
+  "generated_at": "2027-01-23T12:52:29+00:00",
   "mode": "simulation",
   "accounts": [
     {
-      "brand": "northwind-test",
-      "handle": "@northwind.test.co",
-      "owner": "ops.owner@test-brand.example",
-      "recovery_email": "in***@test-brand.example",
-      "recovery_phone": "***200",
+      "brand": "monsoon-threads",
+      "handle": "@monsoon.threads",
+      "owner": "owner.a@monsoonthreads.example",
+      "recovery_email": "in***@monsoonthreads.example",
+      "recovery_phone": "***001",
       "two_factor_method": "authenticator_app",
       "vault_refs": {
-        "password": "vault://northwind-test/instagram/password",
-        "backup_codes": "vault://northwind-test/instagram/backup_codes"
+        "password": "vault://monsoon-threads/instagram/password",
+        "backup_codes": "vault://monsoon-threads/instagram/backup_codes"
       },
       "people_and_roles": [
         {
-          "person": "content.editor@test-brand.example",
+          "person": "editor.c@monsoonthreads.example",
           "surface": "business_suite",
           "role": "content_editor",
           "state": "granted",
           "verified": "human-confirmed"
         },
         {
-          "person": "ops.owner@test-brand.example",
+          "person": "owner.a@monsoonthreads.example",
           "surface": "business_suite",
           "role": "admin",
           "state": "granted",
           "verified": "human-confirmed"
         },
         {
-          "person": "temp.tester@test-brand.example",
+          "person": "owner.b@monsoonthreads.example",
           "surface": "business_suite",
           "role": "insights_viewer",
           "state": "removed",
@@ -38,7 +38,7 @@
       ],
       "status": "active",
       "blockers": [],
-      "last_verified_at": "2026-10-18T12:28:48+00:00",
+      "last_verified_at": "2026-10-20T12:52:19+00:00",
       "last_verified_how": "integration-verified (simulated)"
     }
   ]

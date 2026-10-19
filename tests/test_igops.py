@@ -80,7 +80,7 @@ def test_transient_errors_are_retried_then_give_up(app):
 
 
 def test_lease_blocks_a_second_concurrent_run(app):
-    assert app.store.acquire("provision:northwind-test", "runner-1")
+    assert app.store.acquire(f"provision:{app.cfg.brand_key}", "runner-1")
     assert provision.run(app, holder="runner-2") == "locked"
 
 
@@ -142,11 +142,11 @@ def test_redaction_patterns():
 
 
 def test_config_rejects_long_bio_and_literal_proxy(tmp_path):
-    text = CFG.read_text().replace('bio = "Test brand', 'bio = "' + "x" * 160 + ' Test brand')
+    text = CFG.read_text().replace('bio = "Handloom', 'bio = "' + "x" * 160 + ' Handloom')
     p = tmp_path / "c.toml"; p.write_text(text)
     with pytest.raises(ConfigError):
         load(p)
-    p.write_text(CFG.read_text().replace('url_ref = "vault://northwind-test/proxy/a"', 'url_ref = "http://u:p@h:1"'))
+    p.write_text(CFG.read_text().replace('url_ref = "vault://monsoon-threads/proxy/a"', 'url_ref = "http://u:p@h:1"'))
     with pytest.raises(ConfigError):
         load(p)
 
@@ -180,7 +180,7 @@ def pool(app):
     for n in "ab":
         app.vault.put(ref(app.cfg.brand_key, "proxy", n), px[n].url(*creds[n]))
     p = ProxyPool(app.cfg.proxies, app.vault, app.log,
-                  {"neutral_endpoint": f"http://127.0.0.1:{ep.port}/ip", "max_session_requests": 2,
+                  {"neutral_endpoint": f"http://127.0.0.1:{ep.port}/ip", "max_session_requests": 2,  # local: tests stay offline
                    "max_retries": 2, "cooldown_s": 300})
     yield p, px
     ep.stop()

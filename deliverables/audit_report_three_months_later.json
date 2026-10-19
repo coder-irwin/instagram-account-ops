@@ -1,39 +1,39 @@
 {
-  "audit_id": "audit-20270121T122848",
+  "audit_id": "audit-20270123T125219",
   "resolved_followups": [],
-  "ran_at": "2027-01-21T12:28:48+00:00",
+  "ran_at": "2027-01-23T12:52:19+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "recovery_email_external",
       "severity": "high",
-      "detail": "recovery email no***@gmail.com is not a company address",
+      "detail": "recovery email mo***@gmail.example is not a company address",
       "verification": "human-confirmed",
       "task": 21
     },
     {
-      "brand": "northwind-test",
+      "brand": "monsoon-threads",
       "check": "verification_stale",
       "severity": "low",
-      "detail": "last verified 2026-10-18T12:28:48+00:00",
+      "detail": "last verified 2026-10-20T12:52:19+00:00",
       "verification": "integration-verified (simulated)",
       "task": 9
     },
     {
-      "brand": "northwind-test",
-      "check": "stale_access:content.editor@test-brand.example",
+      "brand": "monsoon-threads",
+      "check": "stale_access:editor.c@monsoonthreads.example",
       "severity": "medium",
-      "detail": "access for content.editor@test-brand.example not reconfirmed in 90 days",
+      "detail": "access for editor.c@monsoonthreads.example not reconfirmed in 90 days",
       "verification": "human-confirmed",
       "task": 22
     },
     {
-      "brand": "northwind-test",
-      "check": "stale_access:ops.owner@test-brand.example",
+      "brand": "monsoon-threads",
+      "check": "stale_access:owner.a@monsoonthreads.example",
       "severity": "medium",
-      "detail": "access for ops.owner@test-brand.example not reconfirmed in 90 days",
+      "detail": "access for owner.a@monsoonthreads.example not reconfirmed in 90 days",
       "verification": "human-confirmed",
       "task": 23
     }

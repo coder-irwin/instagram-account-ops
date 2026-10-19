@@ -5,7 +5,7 @@ never values. Backends:
 
 - LocalVault: encrypted file (Fernet, AES-128-CBC + HMAC). The master key comes from
   IGOPS_VAULT_KEY or a key file outside the repo. Used for the demo and until GAJAN's
-  vault access arrives.
+  vault access is provided.
 - HashiCorpVault (KV v2 over HTTP) and OnePasswordVault (official `op` CLI) for the
   vault GAJAN provides. Pick one with [vault] backend in config/brand.toml.
 
@@ -37,6 +37,12 @@ class Vault(Protocol):
     def exists(self, ref: str) -> bool: ...
     def metadata(self, ref: str) -> dict: ...
     def mark(self, ref: str, **meta) -> None: ...
+
+
+def fingerprint(value: str) -> str:
+    """Safe to show: proves which secret version is in use without revealing it."""
+    import hashlib
+    return "sha256:" + hashlib.sha256(value.encode()).hexdigest()[:12]
 
 
 def ref(*parts: str) -> str:
