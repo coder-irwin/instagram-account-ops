@@ -48,6 +48,7 @@ def main(argv=None) -> int:
     v = sub.add_parser("vault")
     v.add_argument("action", choices=["put", "list", "verify"])
     v.add_argument("ref", nargs="?")
+    v.add_argument("value", nargs="?", help=argparse.SUPPRESS)  # accepted only to refuse it clearly
     v.add_argument("--prompt", action="store_true", help="read the value with hidden input")
     a = sub.add_parser("audit")
     a.add_argument("--scheduled", action="store_true")
@@ -142,6 +143,12 @@ def main(argv=None) -> int:
                 version = app.vault.metadata(vref).get("version")
                 print(f"{vref}  readable  v{version}  {fingerprint(secret)}  {len(secret)} chars")
         else:
+            if args.value is not None:
+                print(
+                    "refused: secrets are never accepted as command arguments, because they would be saved "
+                    "in shell history. Use: igops vault put vault://... --prompt"
+                )
+                return 2
             if not args.ref or not args.prompt:
                 print("usage: vault put vault://... --prompt   (values are never accepted as arguments)")
                 return 2
