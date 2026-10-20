@@ -157,7 +157,7 @@ Task evidence can never contain a secret. `done` refuses fields named like passw
    - Mid-provisioning, it flags missing backup codes, two-factor off and incomplete setup.
    - After setup, it finds nothing, and earlier follow-ups close themselves.
    - Three months later, it flags a personal recovery email and stale access.
-6. **Offboarding the temporary tester.** The first pass leaves 4 actions pending. Once people act, all 4 are completed: role removed, password rotated, backup codes replaced, and vault access revoked.
+6. **Offboarding Owner B (leaving).** The first pass leaves 4 actions pending. Once people act, all 4 are completed: role removed, password rotated, backup codes replaced, and vault access revoked.
 7. **Proxies:**
    - Health checks pass.
    - A session stays on one proxy.

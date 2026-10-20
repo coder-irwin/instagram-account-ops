@@ -45,7 +45,7 @@ def steps(app: App) -> list:
 
     # 1 ----------------------------------------------------------------------------
     def register():
-        existing = s.account(b)   # may not exist yet: this is the step that creates it
+        existing = s.account(b)  # may not exist yet: this is the step that creates it
         s.upsert_account(b, owner=cfg.owner, status=existing["status"] if existing else "provisioning")
         for p in cfg.people:
             s.upsert_person(p.email, p.name, is_test_member=p.test_member)

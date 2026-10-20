@@ -1,7 +1,7 @@
 {
-  "audit_id": "audit-20270124T040331",
+  "audit_id": "audit-20270124T040553",
   "resolved_followups": [],
-  "ran_at": "2027-01-24T04:03:31+00:00",
+  "ran_at": "2027-01-24T04:05:53+00:00",
   "mode": "simulation",
   "checks_run": 9,
   "findings": [
@@ -17,7 +17,7 @@
       "brand": "monsoon-threads",
       "check": "verification_stale",
       "severity": "low",
-      "detail": "last verified 2026-10-21T04:03:31+00:00",
+      "detail": "last verified 2026-10-21T04:05:53+00:00",
       "verification": "integration-verified (simulated)",
       "task": 9
     },

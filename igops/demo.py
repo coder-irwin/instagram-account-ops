@@ -9,7 +9,7 @@ Scenes:
   3. a crash in the middle of the run; the rerun resumes with no duplicate tasks
   4. a transient Meta API error is retried, then verification succeeds
   5. weekly audit, run once, with labelled findings and follow-up tasks
-  6. offboarding the temporary tester: pending, then completed after humans act
+  6. offboarding Owner B (leaving): pending, then completed after humans act
   7. proxies: health checks, a pinned session, scheduled rotation, failover, and a
      security challenge that pauses for human review
   8. reports and a secret scan across every output
@@ -129,7 +129,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     audit_rep = audit.run(app)
     reports.audit(app, audit_rep)
 
-    banner("6. Offboarding the temporary tester")
+    banner("6. Offboarding Owner B (leaving)")
     tester = next(p.email for p in cfg.people if p.test_member)
     first = offboard.run(app, tester)
     reports.offboarding(app, first, "offboarding_report_first_pass")

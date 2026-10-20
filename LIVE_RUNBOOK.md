@@ -12,7 +12,7 @@
 | Vault access | All secrets | Adapter in `igops/vault.py`, or the local vault meanwhile |
 | Separate Meta business id and a system-user token | Linking, people, API verification | `config/brand.toml` and the vault at `meta/system_user_token` |
 | Approved proxies and a neutral test endpoint | Part C demonstration | The vault at `proxy/a` and `proxy/b`, plus `proxy_policy.neutral_endpoint` |
-| Names and emails for owner, escalation and the temporary tester | Tasks and offboarding | `config/brand.toml` |
+| Names and emails for the owner, the escalation contact and the departing member | Tasks and offboarding | `config/brand.toml` |
 
 Until each one arrives, the matching step shows as **blocked** on the register, with the command that resumes it.
 
@@ -50,7 +50,7 @@ The last step reads the profile back through the Meta API and marks the account 
 
 ## 4. Offboarding test
 
-Use the **temporary tester** in the config, whose only role is `insights_viewer`.
+Use the departing member in the config (**Owner B, leaving**), whose only role is `insights_viewer`.
 
 1. Grant them that role during provisioning.
 2. Run `offboard owner.b@<domain>` (Owner B, leaving).
