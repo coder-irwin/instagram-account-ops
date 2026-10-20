@@ -74,6 +74,7 @@ GAJAN asked for the whole environment to be simulated, in an email from Gagandee
 | Neutral endpoint | **http://httpbin.org/headers**, which echoes which proxy carried each request. **/status/403** stands in for a security challenge. If httpbin is unreachable, the demo uses a local endpoint and says so. |
 
 **Other assumptions:**
+
 - The account owner does every Instagram action by hand: signup, verification, two-factor, the business switch, profile edits and Business Suite roles.
 - Simulated human completions in the demo are labelled "(simulated)".
 - Every "integration-verified" result that came from the mock is labelled "(simulated)".
@@ -126,8 +127,8 @@ Task evidence can never contain a secret. `done` refuses fields named like passw
 - **Preserve the connection for the whole life of an active session.** Each session is pinned to one proxy and reuses one keep-alive connection. Changing IP inside a logged-in session looks like account takeover to a platform, and triggers security checks.
 - **Retry on the same proxy.** Timeouts and connection errors get a bounded number of retries with backoff, all on the proxy the session already uses.
 - **Rotate only between sessions:**
-  - On schedule, when a session reaches its age or request budget.
-  - On failover, when a proxy fails health checks or is unreachable after its retries. The broken session ends and a new one starts on a healthy proxy.
+    - On schedule, when a session reaches its age or request budget.
+    - On failover, when a proxy fails health checks or is unreachable after its retries. The broken session ends and a new one starts on a healthy proxy.
 - **Never rotate to get around enforcement.** A security challenge, block or rate limit (HTTP 401, 403 or 429, or challenge wording) pauses the account. It opens a human task, and every further request is refused, including failover, until a person clears it.
 - **Redact everything.** Proxy URLs and credentials live only in the vault. Logs name proxies, such as `proxy-a`, never their address or password.
 - **Instagram itself is never reached through a proxy.** Meta's official API needs none. Proxies are demonstrated only against the neutral endpoint.
