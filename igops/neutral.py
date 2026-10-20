@@ -2,6 +2,7 @@
 health checks, rotation, failover and challenge handling without touching any social
 platform. Swap in GAJAN's approved proxies and neutral endpoint via config and vault.
 """
+
 from __future__ import annotations
 
 import base64
@@ -16,6 +17,7 @@ from urllib.parse import urlsplit
 class _Endpoint(BaseHTTPRequestHandler):
     def do_GET(self):
         via = self.headers.get("X-Test-Proxy", "direct")
+        body: dict[str, object]
         if self.path.startswith("/challenge"):
             body, code = {"error": "verify_identity", "message": "security challenge"}, 403
         else:
@@ -44,7 +46,8 @@ class NeutralEndpoint:
 
 class TestProxy:
     """Minimal forward proxy for plain-HTTP targets with Basic proxy authentication."""
-    __test__ = False   # not a pytest test class
+
+    __test__ = False  # not a pytest test class
 
     def __init__(self, name: str, user: str, password: str, port: int = 0):
         self.name = name
@@ -61,11 +64,12 @@ class TestProxy:
                     head += chunk
                 header_blob, _, rest = head.partition(b"\r\n\r\n")
                 lines = header_blob.decode("latin-1").split("\r\n")
-                method, target, version = lines[0].split(" ", 2)
-                headers = dict(l.split(": ", 1) for l in lines[1:] if ": " in l)
+                method, target, _version = lines[0].split(" ", 2)
+                headers = dict(line.split(": ", 1) for line in lines[1:] if ": " in line)
                 if headers.get("Proxy-Authorization") != expected:
-                    self.connection.sendall(b"HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\n"
-                                            b"Connection: close\r\n\r\n")
+                    self.connection.sendall(
+                        b"HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                    )
                     return
                 u = urlsplit(target)
                 path = (u.path or "/") + (f"?{u.query}" if u.query else "")

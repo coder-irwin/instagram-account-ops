@@ -14,16 +14,17 @@ Scenes:
      security challenge that pauses for human review
   8. reports and a secret scan across every output
 """
+
 from __future__ import annotations
 
 import secrets
 import shutil
-from pathlib import Path
 
 from . import audit, offboard, provision, reports
 from .app import build
 from .core import advance
 from .neutral import NeutralEndpoint, TestProxy
+from .providers.meta import SimulatedMeta
 from .proxy import ProxyDown, ProxyPool, SecurityChallenge
 from .vault import ref
 from .workflow import Interrupted
@@ -48,12 +49,12 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("1. Provisioning: automation runs until it needs a person")
     provision.run(app)
-    human(app, "handle:", handle=app.store.account(b)["handle_candidates"][1])
+    human(app, "handle:", handle=app.store.require_account(b)["handle_candidates"][1])
     provision.run(app)
     human(app, "email:", alias=f"instagram@{cfg.company_domain}")
     provision.run(app)
     human(app, "phone:", phone=cfg.company_phones[0])
-    provision.run(app)                      # generates the password, then waits for signup
+    provision.run(app)  # generates the password, then waits for signup
 
     banner("2. Nobody does the signup: reminder, then escalation")
     advance(cfg.signup_due_hours - 3)
@@ -63,15 +64,23 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     print("sweep again (no repeat escalation):", app.tasks.sweep())
 
     banner("3. Signup done; then the process crashes mid-run and resumes")
-    handle = app.store.account(b)["handle"]
+    handle = app.store.require_account(b)["handle"]
     human(app, "signup:", handle=handle, created="new")
     signup_tasks_before = sum(1 for t in app.tasks.all() if t["key"].startswith("signup:"))
     original = provision.steps
 
     def crashing(app_):
         st = original(app_)
-        return [(n, (lambda: (_ for _ in ()).throw(Interrupted("simulated crash: process killed")))
-                 if n == "two_factor" else f) for n, f in st]
+        return [
+            (
+                n,
+                (lambda: (_ for _ in ()).throw(Interrupted("simulated crash: process killed")))
+                if n == "two_factor"
+                else f,
+            )
+            for n, f in st
+        ]
+
     provision.steps = crashing
     try:
         provision.run(app)
@@ -79,9 +88,11 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         app.log.write("run.crashed", msg=f"{exc} (step two_factor left as 'running')")
     finally:
         provision.steps = original
-    provision.run(app)                           # resumes at two_factor; earlier steps are skipped
+    provision.run(app)  # resumes at two_factor; earlier steps are skipped
     signup_tasks_after = sum(1 for t in app.tasks.all() if t["key"].startswith("signup:"))
-    print(f"signup tasks before crash: {signup_tasks_before}, after resume: {signup_tasks_after} (no duplicate account)")
+    print(
+        f"signup tasks before crash: {signup_tasks_before}, after resume: {signup_tasks_after} (no duplicate account)"
+    )
 
     banner("3b. An audit run mid-provisioning flags the security gaps")
     early = audit.run(app)
@@ -91,10 +102,12 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("4. Two-factor, business link, profile, roles; a transient API error on verification")
     human(app, "2fa:", method="authenticator_app")
-    provision.run(app)                                       # no codes in vault yet -> follow-up task
-    app.vault.put(app.store.account(b)["vault_refs"]["backup_codes"],
-                  " ".join(f"{secrets.randbelow(10**8):08d}" for _ in range(8)),
-                  meta={"purpose": "instagram backup codes"})   # what `igops vault put --prompt` does
+    provision.run(app)  # no codes in vault yet -> follow-up task
+    app.vault.put(
+        app.store.require_account(b)["vault_refs"]["backup_codes"],
+        " ".join(f"{secrets.randbelow(10**8):08d}" for _ in range(8)),
+        meta={"purpose": "instagram backup codes"},
+    )  # what `igops vault put --prompt` does
     human(app, "2fa-codes:", stored="yes")
     provision.run(app)
     human(app, "business:", ig_user_id="17841400000000001")
@@ -103,9 +116,12 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     provision.run(app)
     for t in [t for t in app.tasks.open_tasks() if t["key"].startswith("role-")]:
         app.tasks.complete(t["id"], {"granted": "yes"}, by=f"{cfg.owner} (simulated)")
-    app.meta.set_profile("17841400000000001", username=handle, name=cfg.brand_name,
-                         biography=cfg.bio, website=cfg.website)
-    app.meta.fail_next = 1
+    meta_sim = app.meta
+    assert isinstance(meta_sim, SimulatedMeta), "the demo runs only against the labelled simulation"
+    meta_sim.set_profile(
+        "17841400000000001", username=handle, name=cfg.brand_name, biography=cfg.bio, website=cfg.website
+    )
+    meta_sim.fail_next = 1
     outcome = provision.run(app)
     print("provisioning outcome:", outcome)
 
@@ -121,7 +137,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     reports.audit(app, audit_mid, "audit_report_during_offboarding")
     for t in [t for t in app.tasks.open_tasks() if t["key"].startswith(("offboard-role", "offboard-pw"))]:
         app.tasks.complete(t["id"], {"done": "yes"}, by=f"{cfg.owner} (simulated)")
-    codes_ref = app.store.account(b)["vault_refs"]["backup_codes"]
+    codes_ref = app.store.require_account(b)["vault_refs"]["backup_codes"]
     app.vault.put(codes_ref, " ".join(f"{secrets.randbelow(10**8):08d}" for _ in range(8)))  # new set
     for t in [t for t in app.tasks.open_tasks() if t["key"].startswith("offboard-codes")]:
         app.tasks.complete(t["id"], {"replaced": "yes"}, by=f"{cfg.owner} (simulated)")
@@ -132,8 +148,10 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("6b. Three months later: the weekly audit catches drift and stale access")
     advance(24 * 95)
-    app.store.upsert_account(b, recovery_email="monsoon.personal@gmail.example")   # reported by a person (simulated)
-    app.log.write("drift.reported", msg="owner reports the recovery email was changed to a personal address (simulated)")
+    app.store.upsert_account(b, recovery_email="monsoon.personal@gmail.example")  # reported by a person (simulated)
+    app.log.write(
+        "drift.reported", msg="owner reports the recovery email was changed to a personal address (simulated)"
+    )
     later = audit.run(app)
     reports.audit(app, later, "audit_report_three_months_later")
     for f in later["findings"]:
@@ -142,6 +160,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("7. Proxies on a neutral endpoint: health, pinning, rotation, failover, challenge")
     import httpx
+
     public = cfg.proxy_policy.get("neutral_endpoint", "")
     challenge_path = cfg.proxy_policy.get("challenge_path", "status/403")
     try:
@@ -161,15 +180,26 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     px = {n: TestProxy(f"proxy-{n}", *creds[n]) for n in ("a", "b")}
     for n in ("a", "b"):
         app.vault.put(ref(b, "proxy", n), px[n].url(*creds[n]), meta={"purpose": "local test proxy"})
-    pool = ProxyPool(cfg.proxies, app.vault, app.log,
-                     {**cfg.proxy_policy, "neutral_endpoint": endpoint, "max_session_requests": 3, "cooldown_s": 300})
+    pool = ProxyPool(
+        cfg.proxies,
+        app.vault,
+        app.log,
+        {**cfg.proxy_policy, "neutral_endpoint": endpoint, "max_session_requests": 3, "cooldown_s": 300},
+    )
 
     def on_challenge(account, detail):
-        app.tasks.ensure(f"challenge:{account}", brand=b, kind="security_review",
-                         title=f"Security challenge on {account}: review before any automation resumes",
-                         instructions=f"{detail}. Resolve it yourself on the official site or app. "
-                                      "Do not retry, rotate proxies or bypass it.",
-                         owner=cfg.owner, escalate_to=cfg.escalate_to, due_in_hours=2)
+        app.tasks.ensure(
+            f"challenge:{account}",
+            brand=b,
+            kind="security_review",
+            title=f"Security challenge on {account}: review before any automation resumes",
+            instructions=f"{detail}. Resolve it yourself on the official site or app. "
+            "Do not retry, rotate proxies or bypass it.",
+            owner=cfg.owner,
+            escalate_to=cfg.escalate_to,
+            due_in_hours=2,
+        )
+
     pool.on_challenge = on_challenge
     pool.paused_check = lambda account: bool((t := app.tasks.get(f"challenge:{account}")) and t["status"] == "open")
     pool.check_all()
@@ -177,6 +207,7 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
     def carried_by(r):
         hdrs = r["body"].get("headers", {})
         return hdrs.get("X-Test-Proxy") or r["body"].get("via") or r["proxy"]
+
     seen = [carried_by(pool.request("demo-session")) for _ in range(3)]
     print("3 requests in one session were carried by (as echoed by the endpoint):", set(seen))
     pool.maybe_rotate("demo-session")
@@ -196,16 +227,20 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         print("ERROR: a paused account was allowed to reconnect via", r["proxy"])
     except SecurityChallenge as exc:
         print("further requests refused until a human clears it:", exc)
-    restarted = ProxyPool(cfg.proxies, app.vault, app.log, pool.p)       # a fresh process: no memory of the pause
+    restarted = ProxyPool(cfg.proxies, app.vault, app.log, pool.p)  # a fresh process: no memory of the pause
     restarted.paused_check = pool.paused_check
     try:
         restarted.request("challenge-session")
         print("ERROR: the pause was forgotten after a restart")
     except SecurityChallenge:
         print("after a restart the account is still paused: the pause lives in the open security task")
-    t = app.tasks.get("challenge:challenge-session")
-    app.tasks.complete(t["id"], {"resolved": "yes"}, by=f"{cfg.owner} (simulated)")
-    print("a person closed the security task; next request carried by:", carried_by(restarted.request("challenge-session")))
+    review = app.tasks.get("challenge:challenge-session")
+    assert review is not None
+    app.tasks.complete(review["id"], {"resolved": "yes"}, by=f"{cfg.owner} (simulated)")
+    print(
+        "a person closed the security task; next request carried by:",
+        carried_by(restarted.request("challenge-session")),
+    )
     proxy_status = pool.status()
     if ep:
         ep.stop()
@@ -213,10 +248,11 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
 
     banner("7b. The vault: how credentials and backup codes are stored and read")
     from .vault import fingerprint
-    for r in app.vault.refs():
-        m = app.vault.metadata(r)
-        value = app.vault.get(r)          # a real read: decrypts the value in memory only
-        print(f"  {r:<48} v{m.get('version')}  {fingerprint(value)}  ({len(value)} chars, value never printed)")
+
+    for vref in app.vault.refs():
+        meta = app.vault.metadata(vref)
+        value = app.vault.get(vref)  # a real read: decrypts the value in memory only
+        print(f"  {vref:<48} v{meta.get('version')}  {fingerprint(value)}  ({len(value)} chars, value never printed)")
     print("  the database, config and reports store only these vault:// references")
 
     banner("8. Reports and secret scan")
@@ -224,8 +260,16 @@ def run(config: str = "config/brand.toml", state: str = "state/demo") -> dict:
         print("wrote", f)
     scan = reports.secret_scan(app)
     print("secret scan:", scan)
-    print(f"\nDone. Reports are in {state}/reports/. Inspect the result with:\n"
-          f"  uv run python -m igops --state {state} status\n"
-          f"  uv run python -m igops --state {state} vault verify")
-    return {"outcome": outcome, "audit": audit_rep, "offboarding": final, "proxy": proxy_status, "scan": scan,
-            "signup_tasks": signup_tasks_after}
+    print(
+        f"\nDone. Reports are in {state}/reports/. Inspect the result with:\n"
+        f"  uv run python -m igops --state {state} status\n"
+        f"  uv run python -m igops --state {state} vault verify"
+    )
+    return {
+        "outcome": outcome,
+        "audit": audit_rep,
+        "offboarding": final,
+        "proxy": proxy_status,
+        "scan": scan,
+        "signup_tasks": signup_tasks_after,
+    }

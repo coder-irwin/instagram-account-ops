@@ -7,6 +7,7 @@ After building the prototype I reviewed it as a strict assessor would, then veri
 | What | Result |
 |---|---|
 | Behaviour tests | 28, all passing, with no network needed |
+| Static checks | Ruff lint and format clean, and mypy clean across all 20 modules. Both run on GitHub for Python 3.11, 3.12 and 3.13. |
 | Line coverage | 93 percent of lines, measured with coverage.py |
 | Real process kill | A separate process is killed with `os._exit(137)` right after a step commits. The restart resumes immediately, keeps the same password version, and still has exactly one signup task. |
 | Concurrent runners | Two processes provision the same brand at the same moment, 5 rounds each. Result: 0 duplicate tasks. |

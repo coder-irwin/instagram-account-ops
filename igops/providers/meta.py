@@ -13,7 +13,10 @@ What the official API can do for an Instagram business account, and what it cann
 No proxy is used for Meta calls: they go to graph.facebook.com from our own network with
 an official token, so there is no reason to mask or rotate an IP address.
 """
+
 from __future__ import annotations
+
+from typing import Protocol
 
 import httpx
 
@@ -22,6 +25,15 @@ from ..vault import Vault
 
 GRAPH = "https://graph.facebook.com/v21.0"
 FIELDS = "username,name,biography,website,profile_picture_url"
+
+
+class MetaClient(Protocol):
+    """What the workflow needs from Meta: the real Graph API client and the simulation both fit."""
+
+    name: str
+    simulated: bool
+
+    def instagram_profile(self, ig_user_id: str) -> dict: ...
 
 
 class IntegrationUnavailable(Exception):
@@ -89,6 +101,7 @@ class MetaGraph:
 class SimulatedMeta:
     """Stand-in used in simulation mode. Every result it produces is labelled
     'simulated' in reports, so nothing simulated is ever presented as verified fact."""
+
     name = "meta-simulated"
     simulated = True
 

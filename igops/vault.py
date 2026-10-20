@@ -11,6 +11,7 @@ never values. Backends:
 
 Secret values returned by `get()` are registered with the redactor immediately.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,11 +38,15 @@ class Vault(Protocol):
     def exists(self, ref: str) -> bool: ...
     def metadata(self, ref: str) -> dict: ...
     def mark(self, ref: str, **meta) -> None: ...
+    def delete(self, ref: str) -> None: ...
+    def refs(self) -> list[str]: ...
+    def scan_values(self) -> list[str]: ...
 
 
 def fingerprint(value: str) -> str:
     """Safe to show: proves which secret version is in use without revealing it."""
     import hashlib
+
     return "sha256:" + hashlib.sha256(value.encode()).hexdigest()[:12]
 
 
@@ -53,8 +58,12 @@ def generate_password(length: int = 24) -> str:
     alphabet = string.ascii_letters + string.digits + "!@#%^*-_=+"
     while True:
         pw = "".join(secrets.choice(alphabet) for _ in range(length))
-        if (any(c.islower() for c in pw) and any(c.isupper() for c in pw)
-                and any(c.isdigit() for c in pw) and any(c in "!@#%^*-_=+" for c in pw)):
+        if (
+            any(c.islower() for c in pw)
+            and any(c.isupper() for c in pw)
+            and any(c.isdigit() for c in pw)
+            and any(c in "!@#%^*-_=+" for c in pw)
+        ):
             return pw
 
 
@@ -62,6 +71,7 @@ def key_path_for(vault_path: Path) -> Path:
     """The key is kept outside the project, in the user's config folder (mode 600), so copying
     or zipping the project never copies the means to decrypt it. IGOPS_VAULT_KEY overrides."""
     import hashlib
+
     base = Path(os.environ.get("IGOPS_KEY_DIR", "~/.config/igops/keys")).expanduser()
     return base / (hashlib.sha256(str(Path(vault_path).resolve()).encode()).hexdigest()[:16] + ".key")
 
@@ -74,7 +84,7 @@ class LocalVault:
         legacy = self.path.with_suffix(".key")
         if key is None and legacy.exists() and not key_file.exists():
             key_file.parent.mkdir(parents=True, exist_ok=True)
-            legacy.replace(key_file)          # move an old key out of the project folder
+            legacy.replace(key_file)  # move an old key out of the project folder
         if key is None:
             if key_file.exists():
                 key = key_file.read_bytes().strip()
@@ -100,16 +110,21 @@ class LocalVault:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_bytes(self._f.encrypt(json.dumps(self._data).encode()))
         os.chmod(tmp, 0o600)
-        tmp.replace(self.path)   # atomic: a crash never leaves a half-written vault
+        tmp.replace(self.path)  # atomic: a crash never leaves a half-written vault
 
     def put(self, ref: str, value: str, *, meta: dict | None = None) -> str:
         if not ref.startswith(PREFIX):
             raise VaultError("refs must start with vault://")
         prev = self._data.get(ref)
         version = (prev["version"] + 1) if prev else 1
-        history = (prev.get("history", []) + [{"version": prev["version"], "retired_at": iso()}]) if prev else []
-        self._data[ref] = {"value": value, "version": version, "updated_at": iso(),
-                           "meta": {**(prev or {}).get("meta", {}), **(meta or {})}, "history": history}
+        history = [*prev.get("history", []), {"version": prev["version"], "retired_at": iso()}] if prev else []
+        self._data[ref] = {
+            "value": value,
+            "version": version,
+            "updated_at": iso(),
+            "meta": {**(prev or {}).get("meta", {}), **(meta or {})},
+            "history": history,
+        }
         self._save()
         register_secret(value)
         return ref
@@ -150,8 +165,9 @@ class LocalVault:
 
 # ---------------------------------------------------------------- real vault adapters
 
+
 def _path(ref: str) -> str:
-    return ref[len(PREFIX):]
+    return ref[len(PREFIX) :]
 
 
 class HashiCorpVault:
@@ -160,13 +176,15 @@ class HashiCorpVault:
 
     def __init__(self, address: str, mount: str = "secret", token: str | None = None, client=None):
         import httpx
+
         token = token or os.environ.get("VAULT_TOKEN", "")
         if not token:
             raise VaultError("VAULT_TOKEN is not set")
         register_secret(token)
         self.mount = mount.strip("/")
-        self.http = client or httpx.Client(base_url=address.rstrip("/"), headers={"X-Vault-Token": token},
-                                           timeout=httpx.Timeout(10.0, connect=5.0))
+        self.http = client or httpx.Client(
+            base_url=address.rstrip("/"), headers={"X-Vault-Token": token}, timeout=httpx.Timeout(10.0, connect=5.0)
+        )
         self._known: set[str] = set()
 
     def _req(self, method: str, url: str, **kw):
@@ -208,14 +226,17 @@ class HashiCorpVault:
     def mark(self, ref: str, **meta) -> None:
         cur = {k: v for k, v in self.metadata(ref).items() if k not in ("version", "updated_at")}
         cur.update(meta)
-        self._req("POST", f"/v1/{self.mount}/metadata/{_path(ref)}",
-                  json={"custom_metadata": {k: json.dumps(v) for k, v in cur.items()}})
+        self._req(
+            "POST",
+            f"/v1/{self.mount}/metadata/{_path(ref)}",
+            json={"custom_metadata": {k: json.dumps(v) for k, v in cur.items()}},
+        )
 
     def refs(self) -> list[str]:
         return sorted(self._known)
 
     def delete(self, ref: str) -> None:
-        self._req("DELETE", f"/v1/{self.mount}/metadata/{_path(ref)}")   # all versions
+        self._req("DELETE", f"/v1/{self.mount}/metadata/{_path(ref)}")  # all versions
         self._known.discard(ref)
 
     def scan_values(self) -> list[str]:
@@ -228,9 +249,13 @@ class OnePasswordVault:
 
     def __init__(self, vault_name: str, op: str = "op", runner=None):
         import subprocess
+
         self.vault_name, self.op = vault_name, op
-        self.run = runner or (lambda args, input=None: subprocess.run(
-            [op, *args], input=input, capture_output=True, text=True, timeout=30))
+        self.run = runner or (
+            lambda args, input=None: subprocess.run(
+                [op, *args], input=input, capture_output=True, text=True, timeout=30
+            )
+        )
         self._known: set[str] = set()
 
     def _op(self, *args, input=None):
@@ -249,11 +274,18 @@ class OnePasswordVault:
         item = self._item(ref)
         old_meta = self.metadata(ref) if item else {}
         version = old_meta.get("version", 0) + 1
-        note = json.dumps({**{k: v for k, v in old_meta.items() if k != 'version'}, **(meta or {}), "version": version})
+        note = json.dumps({**{k: v for k, v in old_meta.items() if k != "version"}, **(meta or {}), "version": version})
         # The value is passed on stdin as a JSON template, never as a command-line argument.
-        template = json.dumps({"title": ref, "category": "PASSWORD", "fields": [
-            {"id": "password", "type": "CONCEALED", "purpose": "PASSWORD", "value": value},
-            {"id": "notesPlain", "type": "STRING", "purpose": "NOTES", "value": note}]})
+        template = json.dumps(
+            {
+                "title": ref,
+                "category": "PASSWORD",
+                "fields": [
+                    {"id": "password", "type": "CONCEALED", "purpose": "PASSWORD", "value": value},
+                    {"id": "notesPlain", "type": "STRING", "purpose": "NOTES", "value": note},
+                ],
+            }
+        )
         if item:
             self._op("item", "delete", ref, "--vault", self.vault_name)
         self._op("item", "create", "--vault", self.vault_name, "--template", "/dev/stdin", input=template)
@@ -296,7 +328,7 @@ class OnePasswordVault:
         return [self.get(r) for r in self.refs()]
 
 
-def open_vault(settings: dict, state_dir: Path):
+def open_vault(settings: dict, state_dir: Path) -> Vault:
     backend = (settings or {}).get("backend", "local")
     if backend == "local":
         return LocalVault(Path(state_dir) / "vault.enc")

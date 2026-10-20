@@ -1,11 +1,25 @@
-name: tests
+name: ci
 on: [push, pull_request]
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: ${{ matrix.python }}
       - run: uv sync --extra dev
-      - run: uv run pytest -q
-      - run: uv run python -m igops demo
+      - name: Lint and format
+        run: |
+          uv run --with ruff ruff check .
+          uv run --with ruff ruff format --check .
+      - name: Type check
+        run: uv run --with mypy mypy igops
+      - name: Tests
+        run: uv run pytest -q
+      - name: End-to-end demo
+        run: uv run python -m igops demo

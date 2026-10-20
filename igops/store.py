@@ -4,6 +4,7 @@ workflow steps, audit findings, and a run lease.
 Why SQLite: one file, transactional, survives a crash mid-run. Every write that
 matters is idempotent on a natural key, so re-running anything never duplicates.
 """
+
 from __future__ import annotations
 
 import json
@@ -65,15 +66,17 @@ def new_holder() -> str:
     import os
     import socket
     import uuid
+
     return f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
 
 
 def _alive(holder: str) -> bool:
     import os
     import socket
+
     parts = holder.split(":")
     if len(parts) != 3 or parts[0] != socket.gethostname() or not parts[1].isdigit():
-        return True                       # another host or an old-style holder: trust the expiry
+        return True  # another host or an old-style holder: trust the expiry
     try:
         os.kill(int(parts[1]), 0)
     except ProcessLookupError:
@@ -81,6 +84,27 @@ def _alive(holder: str) -> bool:
     except PermissionError:
         return True
     return True
+
+
+ACCOUNT_COLUMNS = frozenset(
+    {
+        "handle",
+        "handle_candidates",
+        "owner",
+        "recovery_email",
+        "recovery_phone",
+        "two_factor_method",
+        "vault_refs",
+        "status",
+        "blockers",
+        "profile",
+        "ig_user_id",
+        "last_verified_at",
+        "last_verified_how",
+        "created_at",
+        "updated_at",
+    }
+)
 
 
 class Store:
@@ -91,7 +115,7 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
-        try:   # migration: keep revoked grants for the record instead of deleting them
+        try:  # migration: keep revoked grants for the record instead of deleting them
             self.db.execute("ALTER TABLE vault_access ADD COLUMN revoked_at TEXT")
         except sqlite3.OperationalError:
             pass
@@ -113,11 +137,16 @@ class Store:
         this host is taken over at once, so recovery after a kill is immediate, not 15 minutes later."""
         with self.tx() as db:
             row = db.execute("SELECT holder, expires_at FROM leases WHERE name=?", (name,)).fetchone()
-            if row and row["holder"] != holder and datetime.fromisoformat(row["expires_at"]) > now() \
-                    and _alive(row["holder"]):
+            if (
+                row
+                and row["holder"] != holder
+                and datetime.fromisoformat(row["expires_at"]) > now()
+                and _alive(row["holder"])
+            ):
                 return False
-            db.execute("INSERT OR REPLACE INTO leases VALUES (?,?,?)",
-                       (name, holder, iso(now() + timedelta(minutes=minutes))))
+            db.execute(
+                "INSERT OR REPLACE INTO leases VALUES (?,?,?)", (name, holder, iso(now() + timedelta(minutes=minutes)))
+            )
             return True
 
     def release(self, name: str, holder: str) -> None:
@@ -134,6 +163,9 @@ class Store:
         return d
 
     def upsert_account(self, brand: str, **fields) -> dict:
+        unknown = set(fields) - ACCOUNT_COLUMNS
+        if unknown:
+            raise ValueError(f"unknown account fields: {sorted(unknown)}")
         cur = self.account(brand)
         for k in ("vault_refs", "blockers", "profile", "handle_candidates"):
             if k in fields:
@@ -142,15 +174,24 @@ class Store:
         if cur is None:
             fields.setdefault("created_at", iso())
             cols = ["brand", *fields]
-            self.db.execute(f"INSERT INTO accounts ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
-                            [brand, *fields.values()])
+            # Column names come only from ACCOUNT_COLUMNS (checked above); values are bound parameters.
+            self.db.execute(
+                f"INSERT INTO accounts ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",  # noqa: S608
+                [brand, *fields.values()],
+            )
         elif fields:
             sets = ",".join(f"{k}=?" for k in fields)
-            self.db.execute(f"UPDATE accounts SET {sets} WHERE brand=?", [*fields.values(), brand])
-        return self.account(brand)
+            self.db.execute(f"UPDATE accounts SET {sets} WHERE brand=?", [*fields.values(), brand])  # noqa: S608
+        return self.require_account(brand)
+
+    def require_account(self, brand: str) -> dict:
+        acc = self.account(brand)
+        if acc is None:
+            raise KeyError(f"no account '{brand}' in the register")
+        return acc
 
     def accounts(self) -> list[dict]:
-        return [self.account(r["brand"]) for r in self.db.execute("SELECT brand FROM accounts ORDER BY brand")]
+        return [self.require_account(r["brand"]) for r in self.db.execute("SELECT brand FROM accounts ORDER BY brand")]
 
     def set_blocker(self, brand: str, key: str, text: str | None) -> None:
         acc = self.account(brand) or {"blockers": []}
@@ -161,8 +202,11 @@ class Store:
 
     # ---------------------------------------------------------- people and roles
     def upsert_person(self, email: str, name: str, status: str = "active", is_test_member: bool = False):
-        self.db.execute("INSERT INTO people VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,"
-                        " is_test_member=excluded.is_test_member", (email, name, status, int(is_test_member)))
+        self.db.execute(
+            "INSERT INTO people VALUES (?,?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,"
+            " is_test_member=excluded.is_test_member",
+            (email, name, status, int(is_test_member)),
+        )
 
     def set_person_status(self, email: str, status: str):
         self.db.execute("UPDATE people SET status=? WHERE email=?", (status, email))
@@ -171,28 +215,37 @@ class Store:
         return [dict(r) for r in self.db.execute("SELECT * FROM people ORDER BY email")]
 
     def request_role(self, brand, person, surface, role):
-        self.db.execute("INSERT INTO roles (brand, person, surface, role) VALUES (?,?,?,?) "
-                        "ON CONFLICT(brand, person, surface) DO UPDATE SET role=excluded.role "
-                        "WHERE roles.state IN ('requested','granted')", (brand, person, surface, role))
+        self.db.execute(
+            "INSERT INTO roles (brand, person, surface, role) VALUES (?,?,?,?) "
+            "ON CONFLICT(brand, person, surface) DO UPDATE SET role=excluded.role "
+            "WHERE roles.state IN ('requested','granted')",
+            (brand, person, surface, role),
+        )
 
     def set_role_state(self, brand, person, surface, state, verified_how=None):
-        self.db.execute("UPDATE roles SET state=?, verified_how=COALESCE(?, verified_how), last_confirmed_at=? "
-                        "WHERE brand=? AND person=? AND surface=?",
-                        (state, verified_how, iso(), brand, person, surface))
+        self.db.execute(
+            "UPDATE roles SET state=?, verified_how=COALESCE(?, verified_how), last_confirmed_at=? "
+            "WHERE brand=? AND person=? AND surface=?",
+            (state, verified_how, iso(), brand, person, surface),
+        )
 
     def roles(self, brand: str | None = None, person: str | None = None) -> list[dict]:
         q, args = "SELECT * FROM roles WHERE 1=1", []
         if brand:
-            q += " AND brand=?"; args.append(brand)
+            q += " AND brand=?"
+            args.append(brand)
         if person:
-            q += " AND person=?"; args.append(person)
+            q += " AND person=?"
+            args.append(person)
         return [dict(r) for r in self.db.execute(q + " ORDER BY brand, person, surface", args)]
 
     def grant_vault_access(self, ref: str, person: str):
         self.db.execute("INSERT OR IGNORE INTO vault_access (ref, person) VALUES (?,?)", (ref, person))
 
     def vault_refs_for(self, person: str, include_revoked: bool = True) -> list[str]:
-        q = "SELECT ref FROM vault_access WHERE person=?" + ("" if include_revoked else " AND revoked_at IS NULL")
+        q = "SELECT ref FROM vault_access WHERE person=?"
+        if not include_revoked:
+            q += " AND revoked_at IS NULL"
         return [r["ref"] for r in self.db.execute(q, (person,))]
 
     def revoke_vault_access(self, person: str):
@@ -204,20 +257,32 @@ class Store:
         return dict(r) if r else None
 
     def set_step(self, brand, name, status, detail="", bump=False):
-        self.db.execute("INSERT INTO steps (brand, name, status, attempts, detail, updated_at) VALUES (?,?,?,?,?,?) "
-                        "ON CONFLICT(brand, name) DO UPDATE SET status=excluded.status, detail=excluded.detail, "
-                        "updated_at=excluded.updated_at, attempts=steps.attempts + ?",
-                        (brand, name, status, 1 if bump else 0, detail, iso(), 1 if bump else 0))
+        self.db.execute(
+            "INSERT INTO steps (brand, name, status, attempts, detail, updated_at) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(brand, name) DO UPDATE SET status=excluded.status, detail=excluded.detail, "
+            "updated_at=excluded.updated_at, attempts=steps.attempts + ?",
+            (brand, name, status, 1 if bump else 0, detail, iso(), 1 if bump else 0),
+        )
 
     def steps(self, brand: str) -> list[dict]:
         return [dict(r) for r in self.db.execute("SELECT * FROM steps WHERE brand=? ORDER BY rowid", (brand,))]
 
     # ---------------------------------------------------------- findings
     def add_finding(self, **f):
-        self.db.execute("INSERT INTO findings (audit_id, brand, check_name, severity, detail, verification, task_key,"
-                        " created_at) VALUES (?,?,?,?,?,?,?,?)",
-                        (f["audit_id"], f["brand"], f["check_name"], f["severity"], f["detail"],
-                         f["verification"], f.get("task_key"), iso()))
+        self.db.execute(
+            "INSERT INTO findings (audit_id, brand, check_name, severity, detail, verification, task_key,"
+            " created_at) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                f["audit_id"],
+                f["brand"],
+                f["check_name"],
+                f["severity"],
+                f["detail"],
+                f["verification"],
+                f.get("task_key"),
+                iso(),
+            ),
+        )
 
     def findings(self, audit_id: str) -> list[dict]:
         return [dict(r) for r in self.db.execute("SELECT * FROM findings WHERE audit_id=? ORDER BY id", (audit_id,))]

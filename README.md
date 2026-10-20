@@ -1,5 +1,9 @@
 # igops: semi-automated operations for one Instagram brand account
 
+[![ci](https://github.com/coder-irwin/instagram-account-ops/actions/workflows/tests.yml/badge.svg)](https://github.com/coder-irwin/instagram-account-ops/actions/workflows/tests.yml)
+![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+
 A prototype that provisions, secures, audits and offboards **one company-authorised Instagram brand account**. Code does the coordination and record-keeping. People do signup, verification and anything Instagram offers no supported integration for. Every handoff is a tracked task with an owner, a deadline, reminders and escalation, and the workflow resumes cleanly afterwards.
 
 ## Quick start (2 minutes)
@@ -14,6 +18,43 @@ uv run python -m igops --state state/demo status  # look at what the demo produc
 ```
 
 The demo keeps its results in `state/demo/`, so add `--state state/demo` to inspect them. The reports land in `state/demo/reports/`, and a saved copy is in [deliverables/](deliverables/).
+
+To show reminders, escalation and a "three months later" audit without waiting, **the demo fast-forwards its clock**. That's why some report timestamps are days or months ahead of today.
+
+Quality gates, which also run on GitHub for Python 3.11, 3.12 and 3.13:
+
+```bash
+uv run --with ruff ruff check . && uv run --with ruff ruff format --check .   # lint and format
+uv run --with mypy mypy igops                                                 # type check
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+    CLI["igops CLI<br/>provision, tasks, done, audit, offboard"] --> WF
+    subgraph Core["Deterministic core"]
+        WF["Workflow runner<br/>idempotent steps, retries, lease"]
+        POL["Provisioning steps<br/>12 steps"]
+        AUD["Weekly audit<br/>labelled findings"]
+        OFF["Offboarding<br/>completed / pending / blocked"]
+    end
+    WF --> POL
+    POL --> TASKS["Human tasks<br/>owner, deadline, reminders, escalation"]
+    AUD --> TASKS
+    OFF --> TASKS
+    POL --> STORE[("SQLite<br/>register, steps, tasks")]
+    TASKS --> STORE
+    POL --> VAULT[("Vault<br/>encrypted, versioned")]
+    OFF --> VAULT
+    POL --> META["Meta Graph API<br/>verification only<br/>mocked in simulation"]
+    PROXY["Proxy pool<br/>pinned sessions, rotate between sessions,<br/>pause on challenge"] --> NEUTRAL["Neutral endpoint<br/>httpbin.org"]
+    PROXY --> VAULT
+    TASKS -. "a person acts in Instagram,<br/>then closes the task" .-> PEOPLE(("People"))
+    LOG["Redacted run log<br/>+ secret scan"] -.-> REPORTS["Reports: register,<br/>audit, offboarding"]
+```
+
+Everything a platform does not support through an API is a human task. Code never touches Instagram's sign-up, login or settings.
 
 **Read [DECISION_LOG.md](DECISION_LOG.md) first.** How it was tested, and the defects that review found and fixed, are in [docs/ENGINEERING_REVIEW.md](docs/ENGINEERING_REVIEW.md). The step-by-step guide for the real account is [LIVE_RUNBOOK.md](LIVE_RUNBOOK.md).
 
@@ -106,18 +147,6 @@ Task evidence can never contain a secret. `done` refuses fields named like passw
 | Meta Graph API verification of the Instagram profile | Real client written. **Simulated in the demo**, because no Meta token for GAJAN's test business has been provided yet. Everything simulated is labelled "simulated" in every report. |
 | Instagram signup, two-factor, profile edits, business conversion, Business Suite roles | **Human steps by design.** Instagram has no supported API for them. |
 
-## Run it
-
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync --extra dev
-uv run pytest -q                     # 28 behaviour tests, including a real kill -9 recovery test
-uv run python -m igops demo          # full simulated walkthrough, about 10 seconds
-```
-
-The demo writes every deliverable report to `state/demo/reports/`. To show reminders, escalation and a "three months later" audit without waiting, **the demo fast-forwards its clock**. That's why some report timestamps are days or months ahead of today. A copy from the last run is in [deliverables/](deliverables/).
-
 ## What the demo shows
 
 1. **Provisioning pauses at each human handoff.** It covers handle availability, the email alias, the phone number, signup, two-factor, business linking, the profile and role grants. A simulated owner completes each task and the workflow continues.
@@ -208,4 +237,8 @@ igops/neutral.py     local neutral endpoint and test proxies
 igops/providers/meta.py   official Graph API client and the labelled simulation
 igops/reports.py     register, audit, offboarding, tasks, run log, secret scan
 igops/demo.py        the scripted end-to-end walkthrough
+brand_kit/           the invented sample brand (Monsoon Threads)
+deliverables/        reports from the last demo run
+docs/                engineering review, recording script
+.github/workflows/   CI: lint, types, tests and demo on Python 3.11 to 3.13
 ```

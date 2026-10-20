@@ -4,12 +4,13 @@ Everything that prints or writes goes through `redact()`. Secret values loaded f
 the vault are registered with the redactor at the moment they are read, so even a
 value we never anticipated is masked if it reaches a log line.
 """
+
 from __future__ import annotations
 
 import json
 import re
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 # ---------------------------------------------------------------- clock
@@ -18,7 +19,7 @@ _offset = timedelta(0)
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc) + _offset
+    return datetime.now(UTC) + _offset
 
 
 def advance(hours: float) -> None:
@@ -35,7 +36,7 @@ _known_secrets: set[str] = set()
 _lock = threading.Lock()
 
 _PATTERNS = [
-    (re.compile(r"(?i)(https?://)([^:/@\s]+):([^@\s]+)@"), r"\1[REDACTED]:[REDACTED]@"),      # creds in URLs
+    (re.compile(r"(?i)(https?://)([^:/@\s]+):([^@\s]+)@"), r"\1[REDACTED]:[REDACTED]@"),  # creds in URLs
     (re.compile(r"(?i)\b(proxy-authorization|authorization)\s*[:=]\s*\S+(\s+\S+)?"), r"\1: [REDACTED]"),
     (re.compile(r"(?i)\b(access_token|token|password|passwd|secret|api_key|apikey)=([^&\s]+)"), r"\1=[REDACTED]"),
     (re.compile(r"\bEAA[A-Za-z0-9]{20,}\b"), "[REDACTED_META_TOKEN]"),

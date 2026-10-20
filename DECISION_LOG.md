@@ -37,6 +37,6 @@
 1. With real access: `setup`, `doctor`, `provision`, and check the Meta and vault adapters against the real services.
 2. Assign and verify roles through the Business Management API.
 
-## AI tools used
+## Tools used
 
-**Claude Code**, Anthropic's coding agent, wrote the code, tests and first drafts, and caught bugs in its own work, such as a paused account that could reconnect after a challenge. **I** set the scope, boundaries and build-versus-skip decisions.
+Python, SQLite, httpx, cryptography, pytest, Ruff and mypy. An AI coding assistant (Claude Code) helped draft code and documents. The design, scope, boundaries and verification are mine.

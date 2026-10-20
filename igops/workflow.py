@@ -7,13 +7,14 @@ A step function returns one of:
   Blocked(reason)       missing access or a platform blocker; recorded on the register
 and may raise TransientError (retried with backoff, bounded) or anything else (step failed).
 """
+
 from __future__ import annotations
 
 import os
 import random
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from .core import RunLog, redact
 from .providers.meta import TransientError
@@ -40,13 +41,20 @@ class Interrupted(BaseException):
     """Simulates the process being killed mid-run. BaseException, so no handler swallows it."""
 
 
-def run_steps(store: Store, log: RunLog, brand: str, steps: list[tuple[str, Callable[[], object]]],
-              max_retries: int = 3, base_delay: float = 0.5, sleep=time.sleep) -> str:
+def run_steps(
+    store: Store,
+    log: RunLog,
+    brand: str,
+    steps: list[tuple[str, Callable[[], object]]],
+    max_retries: int = 3,
+    base_delay: float = 0.5,
+    sleep=time.sleep,
+) -> str:
     """Run steps in order. Returns 'complete', 'waiting_human', 'blocked' or 'failed'."""
     for name, fn in steps:
         st = store.step(brand, name)
         if st and st["status"] == "done":
-            continue                                   # idempotent: finished steps never rerun
+            continue  # idempotent: finished steps never rerun
         for attempt in range(1, max_retries + 1):
             store.set_step(brand, name, "running", bump=True)
             try:
@@ -57,26 +65,34 @@ def run_steps(store: Store, log: RunLog, brand: str, steps: list[tuple[str, Call
                     log.write("step.failed", step=name, msg=f"{name}: gave up after {attempt} attempts ({exc})")
                     return "failed"
                 delay = base_delay * (2 ** (attempt - 1)) * (0.5 + random.random())
-                log.write("step.retry", step=name, attempt=attempt,
-                          msg=f"{name}: transient error ({exc}), retry {attempt}/{max_retries - 1} in {delay:.1f}s")
+                log.write(
+                    "step.retry",
+                    step=name,
+                    attempt=attempt,
+                    msg=f"{name}: transient error ({exc}), retry {attempt}/{max_retries - 1} in {delay:.1f}s",
+                )
                 sleep(delay)
                 continue
-            except Exception as exc:   # noqa: BLE001 - a bug in one step must not crash the run
+            except Exception as exc:
                 msg = redact(f"{type(exc).__name__}: {exc}")[:300]
                 store.set_step(brand, name, "failed", msg)
                 log.write("step.failed", step=name, msg=f"{name}: unexpected error, step marked failed ({msg})")
                 return "failed"
             if isinstance(result, Done):
                 store.set_step(brand, name, "done", result.detail)
-                if os.environ.get("IGOPS_KILL_AFTER_STEP") == name:   # test hook: simulate kill -9
+                if os.environ.get("IGOPS_KILL_AFTER_STEP") == name:  # test hook: simulate kill -9
                     os._exit(137)
                 store.set_blocker(brand, name, None)
                 log.write("step.done", step=name, msg=f"{name}: {result.detail}")
                 break
             if isinstance(result, WaitHuman):
                 store.set_step(brand, name, "waiting_human", result.detail or result.task_key)
-                log.write("step.waiting", step=name, task=result.task_key,
-                          msg=f"{name}: waiting on human task {result.task_key}")
+                log.write(
+                    "step.waiting",
+                    step=name,
+                    task=result.task_key,
+                    msg=f"{name}: waiting on human task {result.task_key}",
+                )
                 return "waiting_human"
             if isinstance(result, Blocked):
                 store.set_step(brand, name, "blocked", result.reason)

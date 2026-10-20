@@ -1,4 +1,5 @@
 """Load and validate the brand configuration (config/brand.toml)."""
+
 from __future__ import annotations
 
 import tomllib
@@ -56,21 +57,40 @@ ALLOWED_ROLES = {"admin", "content_editor", "insights_viewer", "community_manage
 def load(path: str | Path = "config/brand.toml") -> Config:
     raw = tomllib.loads(Path(path).read_text())
     b, ops, meta = raw["brand"], raw["ops"], raw.get("meta", {})
-    people = [Person(email=p["email"], name=p["name"], roles=p.get("roles", {}),
-                     test_member=p.get("test_member", False), vault_access=p.get("vault_access", []))
-              for p in raw.get("people", [])]
+    people = [
+        Person(
+            email=p["email"],
+            name=p["name"],
+            roles=p.get("roles", {}),
+            test_member=p.get("test_member", False),
+            vault_access=p.get("vault_access", []),
+        )
+        for p in raw.get("people", [])
+    ]
     cfg = Config(
-        mode=raw.get("mode", "simulation"), brand_key=b["key"], brand_name=b["name"],
-        company_domain=b["company_domain"].lower(), website=b.get("website", ""), category=b.get("category", ""),
-        bio=b.get("bio", ""), profile_image=b.get("profile_image", ""),
-        owner=ops["owner"], escalate_to=ops["escalate_to"], signup_due_hours=ops.get("signup_due_hours", 24),
-        task_due_hours=ops.get("task_due_hours", 24), stale_access_days=ops.get("stale_access_days", 90),
+        mode=raw.get("mode", "simulation"),
+        brand_key=b["key"],
+        brand_name=b["name"],
+        company_domain=b["company_domain"].lower(),
+        website=b.get("website", ""),
+        category=b.get("category", ""),
+        bio=b.get("bio", ""),
+        profile_image=b.get("profile_image", ""),
+        owner=ops["owner"],
+        escalate_to=ops["escalate_to"],
+        signup_due_hours=ops.get("signup_due_hours", 24),
+        task_due_hours=ops.get("task_due_hours", 24),
+        stale_access_days=ops.get("stale_access_days", 90),
         stale_verification_days=ops.get("stale_verification_days", 7),
         company_phones=raw.get("company_contacts", {}).get("phones", []),
-        meta_business_id=meta.get("business_id", ""), meta_ig_user_id=meta.get("ig_user_id", ""),
-        meta_token_ref=meta.get("token_ref", ""), people=people, proxies=raw.get("proxies", []),
+        meta_business_id=meta.get("business_id", ""),
+        meta_ig_user_id=meta.get("ig_user_id", ""),
+        meta_token_ref=meta.get("token_ref", ""),
+        people=people,
+        proxies=raw.get("proxies", []),
         proxy_policy=raw.get("proxy_policy", {}),
-        vault=raw.get("vault", {"backend": "local"}), path=str(path),
+        vault=raw.get("vault", {"backend": "local"}),
+        path=str(path),
     )
     problems = []
     if len(cfg.bio) > 150:
@@ -78,7 +98,7 @@ def load(path: str | Path = "config/brand.toml") -> Config:
     for p in people:
         if not p.email.lower().endswith("@" + cfg.company_domain):
             problems.append(f"{p.email} is not a company address")
-        for surface, role in p.roles.items():
+        for role in p.roles.values():
             if role not in ALLOWED_ROLES:
                 problems.append(f"{p.email}: unknown role {role}")
     if sum(1 for p in people if "admin" in p.roles.values()) > 2:
